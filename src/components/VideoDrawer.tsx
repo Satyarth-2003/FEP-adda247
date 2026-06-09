@@ -314,6 +314,19 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated 
                         <textarea value={notes} onChange={e => handleNotes(e.target.value)} rows={2} placeholder="Optional feedback..."
                           className="w-full rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none focus:border-fg/30 resize-none" />
                       </div>
+                      <div className="mt-5 pt-4 border-t border-border flex items-center justify-between">
+                        <button
+                          onClick={saveRating}
+                          disabled={saving}
+                          className="flex items-center gap-2 rounded-full bg-fg px-6 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-fg/90 disabled:opacity-50"
+                        >
+                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                          {saving ? "Saving..." : "Save Rating"}
+                        </button>
+                        {savedAt && (
+                          <span className="text-xs text-emerald-500 font-medium">Rating saved successfully</span>
+                        )}
+                      </div>
                     </div>
                   )}
 
