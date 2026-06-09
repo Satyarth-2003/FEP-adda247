@@ -8,7 +8,7 @@ import type { User } from "@/types";
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (user.role !== "fep_manager") {
+  if (user.role !== "fep_manager" && user.role !== "fep_admin") {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 

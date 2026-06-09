@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
-  if (searchParams.get("scope") === "all" && user.role === "fep_manager") {
+  if (searchParams.get("scope") === "all" && user.role === "fep_manager" || user.role === "fep_admin") {
     return aggregateAll();
   }
 

@@ -72,7 +72,7 @@ export async function POST(req: Request) {
   let targetFacultyId = user.userId;
   let targetFacultyName = user.name;
 
-  if (user.role === "fep_manager") {
+  if (user.role === "fep_manager" || user.role === "fep_admin") {
     // Manager can assign to any faculty
     if (assignToFacultyId) {
       targetFacultyId = assignToFacultyId;
