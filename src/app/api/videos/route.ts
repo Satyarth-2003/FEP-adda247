@@ -60,16 +60,33 @@ export async function GET(req: Request) {
   return NextResponse.json({ videos: r.Items ?? [] });
 }
 
-// POST — Faculty uploads a video link
+// POST — Upload a video link (faculty for themselves, or manager on behalf of a faculty)
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (user.role !== "fep_faculty") {
-    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  }
 
   const body = await req.json();
-  const { youtubeUrl, subjectId, subject, title } = body;
+  const { youtubeUrl, subjectId, subject, title, facultyId: assignToFacultyId } = body;
+
+  // Determine target faculty
+  let targetFacultyId = user.userId;
+  let targetFacultyName = user.name;
+
+  if (user.role === "fep_manager") {
+    // Manager can assign to any faculty
+    if (assignToFacultyId) {
+      targetFacultyId = assignToFacultyId;
+      // Look up name (optional optimization — skip if not critical)
+      targetFacultyName = body.facultyName ?? assignToFacultyId;
+    } else {
+      return NextResponse.json(
+        { error: "Manager must specify facultyId to assign the video" },
+        { status: 400 }
+      );
+    }
+  } else if (user.role !== "fep_faculty") {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
   if (!youtubeUrl || !subjectId || !title) {
     return NextResponse.json(
       { error: "youtubeUrl, subjectId, title required" },
@@ -85,8 +102,8 @@ export async function POST(req: Request) {
 
   const videoId = uuid();
   const video: Video = {
-    facultyId: user.userId,
-    facultyName: user.name,
+    facultyId: targetFacultyId,
+    facultyName: targetFacultyName,
     videoId,
     youtubeUrl,
     subject: subject ?? subjectId,
@@ -110,7 +127,7 @@ export async function POST(req: Request) {
       await ddb.send(
         new UpdateCommand({
           TableName: TABLES.VIDEOS,
-          Key: { facultyId: user.userId, videoId },
+          Key: { facultyId: targetFacultyId, videoId },
           UpdateExpression: "SET #s = :s",
           ExpressionAttributeNames: { "#s": "status" },
           ExpressionAttributeValues: { ":s": "gradi_done" },

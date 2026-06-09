@@ -9,13 +9,16 @@ import { Portal } from "./Portal";
 interface VideoUploaderProps {
   subjects: Subject[];
   onSuccess: () => void;
+  managerMode?: boolean;
+  facultyList?: { userId: string; name: string }[];
 }
 
-export function VideoUploader({ subjects, onSuccess }: VideoUploaderProps) {
+export function VideoUploader({ subjects, onSuccess, managerMode, facultyList }: VideoUploaderProps) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState(subjects[0]?.subjectId ?? "");
+  const [facultyId, setFacultyId] = useState(facultyList?.[0]?.userId ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,6 +40,7 @@ export function VideoUploader({ subjects, onSuccess }: VideoUploaderProps) {
           subjectId,
           subject: subj?.name ?? subjectId,
           title,
+          ...(managerMode && facultyId ? { facultyId } : {}),
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Upload failed");
@@ -148,6 +152,25 @@ export function VideoUploader({ subjects, onSuccess }: VideoUploaderProps) {
                     ))}
                   </select>
                 </div>
+
+                {managerMode && facultyList && facultyList.length > 0 && (
+                  <div>
+                    <label className="block text-[11px] font-medium uppercase tracking-wider text-fg-muted mb-2">
+                      Assign to Faculty
+                    </label>
+                    <select
+                      value={facultyId}
+                      onChange={(e) => setFacultyId(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-bg-elev/60 px-3 py-2.5 text-sm outline-none focus:border-fg/30"
+                    >
+                      {facultyList.map((f) => (
+                        <option key={f.userId} value={f.userId}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {error && (
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-400">

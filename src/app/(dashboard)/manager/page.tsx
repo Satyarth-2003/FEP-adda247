@@ -10,6 +10,7 @@ import { SubjectTabs } from "@/components/SubjectTabs";
 import { SubjectRadar, buildRadarData } from "@/components/SubjectRadar";
 import { ScoreRing } from "@/components/ScoreRing";
 import { ProgramAnalytics } from "@/components/ProgramAnalytics";
+import { VideoUploader } from "@/components/VideoUploader";
 import { cn } from "@/lib/utils";
 import type { Subject, Video, GradiAnalysis, JWTPayload } from "@/types";
 
@@ -161,17 +162,25 @@ export default function ManagerDashboard() {
             })}
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-fg-muted">
-          <Users className="h-3 w-3" />
-          <span className="text-mono text-fg/85">
-            {aggQ.data?.totalFaculty ?? 0}
-          </span>
-          <span>faculty</span>
-          <span className="text-fg-dim mx-1">·</span>
-          <span className="text-mono text-fg/85">
-            {aggQ.data?.totalVideos ?? 0}
-          </span>
-          <span>videos</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-[11px] text-fg-muted">
+            <Users className="h-3 w-3" />
+            <span className="text-mono text-fg/85">
+              {aggQ.data?.totalFaculty ?? 0}
+            </span>
+            <span>faculty</span>
+            <span className="text-fg-dim mx-1">·</span>
+            <span className="text-mono text-fg/85">
+              {aggQ.data?.totalVideos ?? 0}
+            </span>
+            <span>videos</span>
+          </div>
+          <VideoUploader
+            subjects={subjects}
+            onSuccess={() => { aggQ.refetch(); }}
+            managerMode
+            facultyList={(aggQ.data?.leaderboard ?? []).map(f => ({ userId: f.userId, name: f.name }))}
+          />
         </div>
       </motion.div>
 
