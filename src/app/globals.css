@@ -1,26 +1,184 @@
 @import "tailwindcss";
 
+/* ── DARK (default on :root) ─────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #060608;
+  --bg-elev: #0c0c10;
+  --bg-card: #111116;
+  --border: #1f1f26;
+  --border-strong: #2a2a33;
+  --fg: #f5f5f7;
+  --fg-muted: #8a8a93;
+  --fg-dim: #5a5a63;
+  --emerald: #10b981;
+  --amber: #f59e0b;
+  --rose: #f43f5e;
+  --brand: #ff3232;
+
+  --glass-bg-1: rgba(255,255,255,0.025);
+  --glass-bg-2: rgba(255,255,255,0.015);
+  --glass-bg-s1: rgba(255,255,255,0.04);
+  --glass-bg-s2: rgba(255,255,255,0.02);
+  --glass-border: rgba(255,255,255,0.06);
+  --glass-border-s: rgba(255,255,255,0.08);
+  --glass-inset: rgba(255,255,255,0.04);
+  --glass-shadow: rgba(0,0,0,0.5);
+  --backdrop: rgba(0,0,0,0.65);
+
+  --scrollbar-thumb: rgba(255,255,255,0.07);
+  --scrollbar-hover: rgba(255,255,255,0.13);
+  --shimmer-1: rgba(255,255,255,0.02);
+  --shimmer-2: rgba(255,255,255,0.06);
+  --slider-track: rgba(255,255,255,0.1);
+  --slider-thumb: #ffffff;
 }
 
+/* ── LIGHT override — attr selector beats :root pseudo-class ─ */
+html[data-theme="light"] {
+  --bg: #f8f7f5;
+  --bg-elev: #ffffff;
+  --bg-card: #ffffff;
+  --border: #e5e3df;
+  --border-strong: #ccc9c3;
+  --fg: #0f0e0c;
+  --fg-muted: #5c5850;
+  --fg-dim: #a39f98;
+  --emerald: #059669;
+  --amber: #d97706;
+  --rose: #e11d48;
+  --brand: #ef4444;
+
+  --glass-bg-1: rgba(255,255,255,0.75);
+  --glass-bg-2: rgba(255,255,255,0.55);
+  --glass-bg-s1: rgba(255,255,255,0.88);
+  --glass-bg-s2: rgba(255,255,255,0.70);
+  --glass-border: rgba(0,0,0,0.07);
+  --glass-border-s: rgba(0,0,0,0.10);
+  --glass-inset: rgba(255,255,255,0.9);
+  --glass-shadow: rgba(0,0,0,0.08);
+  --backdrop: rgba(10,10,12,0.55);
+
+  --scrollbar-thumb: rgba(0,0,0,0.12);
+  --scrollbar-hover: rgba(0,0,0,0.22);
+  --shimmer-1: rgba(0,0,0,0.03);
+  --shimmer-2: rgba(0,0,0,0.08);
+  --slider-track: rgba(0,0,0,0.10);
+  --slider-thumb: #0f0e0c;
+}
+
+/* ── Tailwind v4 token mapping ───────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg:           var(--bg);
+  --color-bg-elev:      var(--bg-elev);
+  --color-bg-card:      var(--bg-card);
+  --color-border:       var(--border);
+  --color-border-strong:var(--border-strong);
+  --color-fg:           var(--fg);
+  --color-fg-muted:     var(--fg-muted);
+  --color-fg-dim:       var(--fg-dim);
+  --color-emerald:      var(--emerald);
+  --color-amber:        var(--amber);
+  --color-rose:         var(--rose);
+  --color-brand:        var(--brand);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Display",
+    "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base ────────────────────────────────────────────────── */
+*, *::before, *::after { border-color: var(--border); }
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-image:
+    radial-gradient(at 18% 0%, rgba(99,102,241,0.08) 0px, transparent 55%),
+    radial-gradient(at 100% 50%, rgba(244,63,94,0.06) 0px, transparent 55%),
+    radial-gradient(at 0% 100%, rgba(16,185,129,0.05) 0px, transparent 55%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
+
+/* ── Glass cards ─────────────────────────────────────────── */
+.glass {
+  background: linear-gradient(180deg, var(--glass-bg-1) 0%, var(--glass-bg-2) 100%);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 1px 0 0 var(--glass-inset) inset,
+    0 20px 40px -20px var(--glass-shadow);
+}
+
+.glass-strong {
+  background: linear-gradient(180deg, var(--glass-bg-s1) 0%, var(--glass-bg-s2) 100%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border-s);
+  box-shadow: 0 1px 0 0 var(--glass-inset) inset,
+    0 8px 32px -8px var(--glass-shadow);
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum","ss01";
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width:10px; height:10px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:8px; }
+::-webkit-scrollbar-thumb:hover { background:var(--scrollbar-hover); }
+::selection { background:rgba(128,128,128,0.2); color:var(--fg); }
+
+/* ── Shimmer skeleton ────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -1000px 0; }
+  100% { background-position:  1000px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--shimmer-1) 0%, var(--shimmer-2) 50%, var(--shimmer-1) 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+/* ── Range slider ────────────────────────────────────────── */
+input[type="range"].param-slider {
+  -webkit-appearance: none; appearance: none;
+  height: 5px;
+  background: var(--slider-track);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"].param-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--slider-thumb);
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--glass-shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+input[type="range"].param-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 16px var(--glass-shadow);
+}
+input[type="range"].param-slider::-moz-range-thumb {
+  width:18px; height:18px; border-radius:50%;
+  background: var(--slider-thumb); border:none; cursor:pointer;
+}
+
+/* ── Misc animations ─────────────────────────────────────── */
+@keyframes pulseRing {
+  0%   { box-shadow:0 0 0 0 currentColor; opacity:0.6; }
+  100% { box-shadow:0 0 0 12px currentColor; opacity:0; }
+}
+.pulse-ring { animation:pulseRing 2s infinite; }

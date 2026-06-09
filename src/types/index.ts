@@ -1,0 +1,110 @@
+export type Role = "fep_faculty" | "fep_manager";
+
+export type VideoStatus =
+  | "uploaded"
+  | "analyzing"
+  | "gradi_done"
+  | "manager_rated";
+
+export interface User {
+  userId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: Role;
+  subjects: string[];           // verticals (ssc, foundation, neet, etc.)
+  teachingSubject?: string;     // what they actually teach (Maths, History, etc.)
+  examTarget?: string;          // detailed exam target description
+  passwordHash?: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
+export interface Video {
+  facultyId: string;
+  videoId: string;
+  youtubeUrl: string;
+  subject: string;
+  subjectId: string;
+  title: string;
+  duration?: string;
+  thumbnailUrl?: string;
+  uploadedAt: string;
+  status: VideoStatus;
+  facultyName?: string;
+}
+
+export interface GradiAnalysis {
+  videoId: string;
+  gradiScore: number;        // 0–5, raw from Gradi API
+  scoreReason: string;
+  oneLiner: string;
+  summary: string;
+  positives: string[];
+  improvements: string[];
+  // Gradi's 6 internal parameters (0–5 each, informational)
+  ratingClarity: number;
+  ratingDepth: number;
+  ratingStructure: number;
+  ratingCommunication: number;
+  ratingInteraction: number;
+  ratingCommercial: number;
+  videoMetadata?: Record<string, unknown>;
+  analyzedAt: string;
+}
+
+/**
+ * Manager scores 5 parameters from the original FEP sheet:
+ * Board-work, Visual TLM, Energy, Delivery, Hook  — each 1–5 = 25 pts total
+ */
+export interface ManagerRating {
+  videoId: string;
+  managerId: string;
+  managerName?: string;
+  boardWork: number;    // 1–5
+  visualTLM: number;   // 1–5
+  energy: number;      // 1–5
+  delivery: number;    // 1–5
+  hook: number;        // 1–5
+  total: number;       // boardWork + visualTLM + energy + delivery + hook (5–25)
+  notes?: string;
+  ratedAt: string;
+}
+
+export interface Subject {
+  subjectId: string;
+  name: string;
+  description?: string;
+}
+
+export interface JWTPayload {
+  userId: string;
+  email: string;
+  name: string;
+  role: Role;
+}
+
+/** 5 parameters the manager scores, mirroring the original FEP Video Log sheet */
+export const MANAGER_PARAMS = [
+  { key: "boardWork",  label: "Board-work",  desc: "Whiteboard / chalk work quality" },
+  { key: "visualTLM", label: "Visual TLM",   desc: "Teaching-learning material usage" },
+  { key: "energy",    label: "Energy",       desc: "Enthusiasm & on-screen presence" },
+  { key: "delivery",  label: "Delivery",     desc: "Clarity, pacing & language" },
+  { key: "hook",      label: "Hook",         desc: "Opening engagement & retention" },
+] as const;
+
+export type ManagerParamKey = (typeof MANAGER_PARAMS)[number]["key"];
+
+/** Gradi's 6 internal analysis parameters (informational only) */
+export const GRADI_PARAMS = [
+  { key: "ratingClarity",        label: "Clarity" },
+  { key: "ratingDepth",          label: "Depth" },
+  { key: "ratingStructure",      label: "Structure" },
+  { key: "ratingCommunication",  label: "Communication" },
+  { key: "ratingInteraction",    label: "Interaction" },
+  { key: "ratingCommercial",     label: "Commercial" },
+] as const;
+
+// Kept for backwards compat in archive section
+export const RATING_PARAMS = GRADI_PARAMS;
+export type RatingKey = (typeof GRADI_PARAMS)[number]["key"];
