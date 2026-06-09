@@ -11,10 +11,12 @@ interface VideoUploaderProps {
   onSuccess: () => void;
   managerMode?: boolean;
   facultyList?: { userId: string; name: string }[];
+  autoOpen?: boolean;
+  onClose?: () => void;
 }
 
-export function VideoUploader({ subjects, onSuccess, managerMode, facultyList }: VideoUploaderProps) {
-  const [open, setOpen] = useState(false);
+export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, autoOpen, onClose }: VideoUploaderProps) {
+  const [open, setOpen] = useState(autoOpen ?? false);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState(subjects[0]?.subjectId ?? "");
@@ -57,15 +59,17 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList }:
 
   return (
     <>
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-full bg-fg px-4 py-2 text-sm font-medium text-bg transition-colors hover:bg-fg/90"
-      >
-        <Upload className="h-3.5 w-3.5" />
-        Upload Video
-      </motion.button>
+      {!autoOpen && (
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 rounded-full bg-fg px-4 py-2 text-sm font-medium text-bg transition-colors hover:bg-fg/90"
+        >
+          <Upload className="h-3.5 w-3.5" />
+          Upload Video
+        </motion.button>
+      )}
 
       <Portal>
         <AnimatePresence>
@@ -75,7 +79,7 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList }:
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               style={{ position: "fixed", inset: 0, zIndex: 9999 }}
-              onClick={() => !loading && setOpen(false)}
+              onClick={() => { if (!loading) { setOpen(false); onClose?.(); } }}
             >
               <div style={{ position: "absolute", inset: 0, background: "var(--backdrop)", backdropFilter: "blur(4px)" }} />
               <motion.div
@@ -96,7 +100,7 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList }:
                   </p>
                 </div>
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={() => { setOpen(false); onClose?.(); }}
                   disabled={loading}
                   className="rounded-full p-1.5 text-fg-muted hover:bg-bg-elev hover:text-fg"
                 >
