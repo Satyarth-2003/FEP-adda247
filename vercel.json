@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "installCommand": "npm install",
+  "regions": ["bom1"],
+  "functions": {
+    "src/app/api/videos/route.ts": { "maxDuration": 60 },
+    "src/app/api/archive/videolog/route.ts": { "maxDuration": 30 },
+    "src/app/api/stats/route.ts": { "maxDuration": 30 }
+  }
+}

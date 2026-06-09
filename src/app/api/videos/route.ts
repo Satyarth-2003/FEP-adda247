@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { v4 as uuid } from "uuid";
 import {
   PutCommand,
@@ -99,8 +99,9 @@ export async function POST(req: Request) {
 
   await ddb.send(new PutCommand({ TableName: TABLES.VIDEOS, Item: video }));
 
-  // Fire-and-forget Gradi analysis
-  (async () => {
+  // Schedule Gradi analysis to run AFTER the response is sent.
+  // `after()` works on Vercel (the runtime keeps the function alive) and locally.
+  after(async () => {
     try {
       const analysis = await analyzeWithGradi(youtubeUrl, videoId);
       await ddb.send(
@@ -118,7 +119,7 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("Gradi analysis failed for", videoId, e);
     }
-  })();
+  });
 
   return NextResponse.json({ video });
 }

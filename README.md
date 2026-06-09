@@ -45,7 +45,25 @@ Open <http://localhost:3000> and sign in.
 | `fep-videos` | facultyId | videoId | GSI: `subjectId-uploadedAt-index` |
 | `fep-gradi-analyses` | videoId | — | Gradi auto-fills |
 | `fep-manager-ratings` | videoId | managerId | One rating per (video, manager) |
-| `fep-subjects` | subjectId | — | math, science, english, sst, reasoning, gs |
+| `fep-subjects` | subjectId | — | 11 official Adda247 verticals (ssc, foundation, neet, upsc, banking, railway, teaching, cuet, tech, ugc-net, nursing) |
+
+## Deploying to Vercel
+
+1. **Import the repo** on Vercel — it auto-detects Next.js. No build config needed (`vercel.json` already wires up function timeouts).
+2. **Add environment variables** in *Project Settings → Environment Variables*. Copy from `.env.example`:
+   - `AWS_REGION` — region your tables live in (e.g. `ap-south-1`)
+   - `AWS_ACCESS_KEY_ID` — IAM user with DynamoDB access scoped to `fep-*` tables
+   - `AWS_SECRET_ACCESS_KEY` — paired secret
+   - `JWT_SECRET` — generate with `openssl rand -base64 64`. Must be ≥ 32 bytes.
+   - `JWT_EXPIRES_IN` — optional, defaults to `7d`
+   - `GRADI_API_URL` — optional, defaults to `https://gradi.ai/api/analyze-video`
+   - `NEXT_PUBLIC_APP_NAME` — `FEP`
+   - `NEXT_PUBLIC_BRAND` — `Adda247`
+3. **Provision DynamoDB tables** locally first by running `npm run db:setup` against the same region — Vercel won't do this for you.
+4. **Seed users** with `npm run db:seed-faculty` (and optionally `npm run db:seed-videos` for sample data).
+5. **Deploy** — push to `main` and Vercel auto-builds.
+
+The video upload route uses Next.js `after()` so the Gradi analysis (~30s) completes on Vercel after the response is sent. Function timeout is set to 60s in `vercel.json`.
 
 ## Routes
 
