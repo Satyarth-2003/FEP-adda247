@@ -1,7 +1,7 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ExternalLink, Loader2, Save, Play, ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { GradiAnalysis, ManagerRating, ManagerParamKey, Video } from "@/types";
 import { MANAGER_PARAMS, GRADI_PARAMS } from "@/types";
 import { ScoreRing } from "./ScoreRing";
@@ -35,7 +35,6 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated 
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showFullSummary, setShowFullSummary] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!videoId) { setData(null); setShowPreview(false); return; }
@@ -59,28 +58,30 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated 
       .finally(() => setLoading(false));
   }, [videoId, managerMode, managerId]);
 
-  function autoSave(r: Record<ManagerParamKey, number>, n: string) {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      if (!videoId || Object.values(r).every(v => v === 0)) return;
-      setSaving(true);
-      try {
-        await fetch("/api/ratings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ videoId, ...r, notes: n }) });
-        setSavedAt(Date.now());
-        onRated?.();
-      } finally { setSaving(false); }
-    }, 600);
-  }
 
   function handleRating(key: ManagerParamKey, val: number) {
     const next = { ...ratings, [key]: val };
     setRatings(next);
-    if (managerMode) autoSave(next, notes);
   }
 
   function handleNotes(val: string) {
     setNotes(val);
-    if (managerMode) autoSave(ratings, val);
+  }
+
+  async function saveRating() {
+    if (!videoId) return;
+    setSaving(true);
+    try {
+      await fetch("/api/ratings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId, ...ratings, notes }),
+      });
+      setSavedAt(Date.now());
+      onRated?.();
+    } finally {
+      setSaving(false);
+    }
   }
 
   const managerTotal = ratings.boardWork + ratings.visualTLM + ratings.energy + ratings.delivery + ratings.hook;

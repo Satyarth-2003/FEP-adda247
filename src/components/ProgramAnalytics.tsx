@@ -58,6 +58,7 @@ export function ProgramAnalytics({ subjects }: Props) {
     queryKey: ["analytics-videolog"],
     queryFn: () => fetch("/api/archive/videolog").then(r => r.json()),
     staleTime: 30_000,
+    refetchInterval: 15_000, // auto-refresh every 15s to pick up new data
   });
 
   const allRows = dataQ.data?.rows ?? [];
