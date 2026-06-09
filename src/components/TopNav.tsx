@@ -7,6 +7,7 @@ import {
   Moon,
   Archive,
   LayoutDashboard,
+  Shield,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -16,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 interface TopNavProps {
   userName: string;
-  role: "fep_faculty" | "fep_manager";
+  role: "fep_faculty" | "fep_manager" | "fep_admin";
 }
 
 export function TopNav({ userName, role }: TopNavProps) {
@@ -29,11 +30,12 @@ export function TopNav({ userName, role }: TopNavProps) {
     router.replace("/login");
   }
 
-  const dashHref = role === "fep_manager" ? "/manager" : "/faculty";
+  const dashHref = role === "fep_admin" ? "/admin" : role === "fep_manager" ? "/manager" : "/faculty";
 
   const navItems = [
     { href: dashHref, label: "Dashboard", icon: LayoutDashboard },
     { href: "/archive", label: "Program Archive", icon: Archive },
+    ...(role === "fep_admin" ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 
   return (

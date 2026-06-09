@@ -10,7 +10,8 @@
     "db:setup": "tsx scripts/setup-tables.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed-faculty": "tsx scripts/seed-faculty.ts",
-    "db:seed-videos": "tsx scripts/seed-videos.ts"
+    "db:seed-videos": "tsx scripts/seed-videos.ts",
+    "db:seed-admins": "tsx scripts/seed-admins.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1063.0",

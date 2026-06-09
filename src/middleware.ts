@@ -5,7 +5,7 @@ const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "dev-secret-change-me"
 );
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/me"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/google", "/api/auth/me"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -34,14 +34,19 @@ export async function middleware(req: NextRequest) {
     const role = payload.role as string;
 
     // Role-scoped protections
-    if (pathname.startsWith("/manager") && role !== "fep_manager") {
+    if (pathname.startsWith("/admin") && role !== "fep_admin") {
+      const url = req.nextUrl.clone();
+      url.pathname = role === "fep_manager" ? "/manager" : "/faculty";
+      return NextResponse.redirect(url);
+    }
+    if (pathname.startsWith("/manager") && role !== "fep_manager" && role !== "fep_admin") {
       const url = req.nextUrl.clone();
       url.pathname = "/faculty";
       return NextResponse.redirect(url);
     }
     if (pathname.startsWith("/faculty") && role !== "fep_faculty") {
       const url = req.nextUrl.clone();
-      url.pathname = "/manager";
+      url.pathname = role === "fep_admin" ? "/admin" : "/manager";
       return NextResponse.redirect(url);
     }
     return NextResponse.next();

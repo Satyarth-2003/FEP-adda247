@@ -1,4 +1,4 @@
-export type Role = "fep_faculty" | "fep_manager";
+export type Role = "fep_faculty" | "fep_manager" | "fep_admin";
 
 export type VideoStatus =
   | "uploaded"
