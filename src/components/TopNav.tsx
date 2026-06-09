@@ -30,7 +30,7 @@ export function TopNav({ userName, role }: TopNavProps) {
     router.replace("/login");
   }
 
-  const dashHref = role === "fep_admin" ? "/admin" : role === "fep_manager" ? "/manager" : "/faculty";
+  const dashHref = role === "fep_manager" || role === "fep_admin" ? "/manager" : "/faculty";
 
   const navItems = [
     { href: dashHref, label: "Dashboard", icon: LayoutDashboard },

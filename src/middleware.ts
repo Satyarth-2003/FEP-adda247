@@ -44,9 +44,9 @@ export async function middleware(req: NextRequest) {
       url.pathname = "/faculty";
       return NextResponse.redirect(url);
     }
-    if (pathname.startsWith("/faculty") && role !== "fep_faculty") {
+    if (pathname.startsWith("/faculty") && role === "fep_manager") {
       const url = req.nextUrl.clone();
-      url.pathname = role === "fep_admin" ? "/admin" : "/manager";
+      url.pathname = "/manager";
       return NextResponse.redirect(url);
     }
     return NextResponse.next();

@@ -39,9 +39,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Google sign-in failed");
-      const dest = data.user.role === "fep_admin" ? "/admin"
-        : data.user.role === "fep_manager" ? "/manager"
-        : "/faculty";
+      const dest = data.user.role === "fep_admin" || data.user.role === "fep_manager" ? "/manager" : "/faculty";
       router.replace(dest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign-in failed");
@@ -91,9 +89,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      const dest = data.user.role === "fep_admin" ? "/admin"
-        : data.user.role === "fep_manager" ? "/manager"
-        : "/faculty";
+      const dest = data.user.role === "fep_admin" || data.user.role === "fep_manager" ? "/manager" : "/faculty";
       router.replace(dest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

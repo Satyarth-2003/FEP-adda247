@@ -113,7 +113,7 @@ export default function ManagerDashboard() {
 
   const selectedFacultyRow = useMemo(
     () =>
-      aggQ.data?.leaderboard.find((r) => r.userId === selectedFaculty) ?? null,
+      aggQ.data?.leaderboard?.find((r) => r.userId === selectedFaculty) ?? null,
     [aggQ.data, selectedFaculty]
   );
 
