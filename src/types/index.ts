@@ -32,6 +32,8 @@ export interface Video {
   uploadedAt: string;
   status: VideoStatus;
   facultyName?: string;
+  views?: number;
+  likes?: number;
 }
 
 export interface GradiAnalysis {

@@ -62,9 +62,27 @@ export function VideoCard({ video, onClick, index = 0 }: VideoCardProps) {
             {relativeTime(video.uploadedAt)}
           </span>
         </div>
-        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-fg">
+        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-fg mb-2">
           {video.title}
         </h3>
+        {/* Video stats */}
+        <div className="flex items-center gap-3 text-[10px] text-fg-muted">
+          <div className="flex items-center gap-1">
+            <span className="font-mono">{video.views ?? 0}</span>
+            <span>views</span>
+          </div>
+          <span className="text-fg-dim">·</span>
+          <div className="flex items-center gap-1">
+            <span className="font-mono">{video.likes ?? 0}</span>
+            <span>likes</span>
+          </div>
+          {video.duration && (
+            <>
+              <span className="text-fg-dim">·</span>
+              <span className="font-mono">{video.duration}</span>
+            </>
+          )}
+        </div>
       </div>
     </motion.button>
   );

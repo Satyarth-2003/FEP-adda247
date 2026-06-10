@@ -90,10 +90,10 @@ export function Leaderboard({
                     className="text-mono text-base font-semibold tracking-tight"
                     style={{ color }}
                   >
-                    {row.avgGradiScore.toFixed(1)}
+                    {(row.avgGradiScore * 5).toFixed(1)}
                   </span>
                   <span className="text-[9px] uppercase tracking-wider text-fg-dim">
-                    avg
+                    /25
                   </span>
                 </div>
                 <TrendingUp

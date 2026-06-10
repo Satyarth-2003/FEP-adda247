@@ -2,16 +2,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Users, Sparkles, LayoutGrid, BarChart3 } from "lucide-react";
+import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play } from "lucide-react";
 import { Leaderboard } from "@/components/Leaderboard";
-import { VideoCard } from "@/components/VideoCard";
 import { VideoDrawer } from "@/components/VideoDrawer";
 import { SubjectTabs } from "@/components/SubjectTabs";
 import { SubjectRadar, buildRadarData } from "@/components/SubjectRadar";
 import { ScoreRing } from "@/components/ScoreRing";
 import { ProgramAnalytics } from "@/components/ProgramAnalytics";
 import { VideoUploader } from "@/components/VideoUploader";
-import { cn } from "@/lib/utils";
+import { cn, extractYouTubeId } from "@/lib/utils";
 import type { Subject, Video, GradiAnalysis, JWTPayload } from "@/types";
 
 interface AggregateStats {
@@ -210,30 +209,12 @@ export default function ManagerDashboard() {
               className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8"
             >
         <div className="glass-strong lg:col-span-2 rounded-2xl p-5 flex items-center gap-5">
-          <ScoreRing
-            size={88}
-            stroke={6}
-            label="OVERALL"
-            score={
-              aggQ.data?.leaderboard?.length
-                ? aggQ.data.leaderboard.reduce(
-                    (a, b) => a + b.avgGradiScore,
-                    0
-                  ) /
-                  Math.max(
-                    aggQ.data.leaderboard.filter((r) => r.avgGradiScore > 0)
-                      .length,
-                    1
-                  )
-                : 0
-            }
-          />
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-fg-muted">
               Cohort Performance
             </p>
             <h1 className="mt-1 text-xl md:text-2xl font-semibold tracking-tight">
-              Faculty Excellence Program
+              Adda247 EduSkill Program
             </h1>
             <p className="mt-1 text-sm text-fg-muted">
               Live aggregate across all faculty and subjects.
@@ -310,12 +291,15 @@ export default function ManagerDashboard() {
               className="space-y-5"
             >
               <div className="glass-strong rounded-2xl p-5 flex items-center gap-5">
-                <ScoreRing
-                  score={facultyQ.data?.avgGradiScore ?? 0}
-                  size={88}
-                  stroke={6}
-                  label="GRADI AVG"
-                />
+                {(facultyQ.data?.avgGradiScore ?? 0) > 0 && (facultyQ.data?.pctRatedByManager ?? 0) > 0 ? (
+                  <ScoreRing
+                    score={(facultyQ.data?.avgGradiScore ?? 0) * 10}
+                    max={50}
+                    size={88}
+                    stroke={6}
+                    label="/ 50"
+                  />
+                ) : null}
                 <div className="flex-1">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-fg-muted">
                     Faculty Detail
@@ -352,12 +336,9 @@ export default function ManagerDashboard() {
               </div>
 
               {facultyQ.isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="aspect-[4/3] rounded-xl shimmer border border-border"
-                    />
+                    <div key={i} className="h-12 rounded-xl shimmer border border-border" />
                   ))}
                 </div>
               ) : filteredVideos.length === 0 ? (
@@ -365,16 +346,7 @@ export default function ManagerDashboard() {
                   No videos uploaded for this subject yet.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {filteredVideos.map((v, i) => (
-                    <VideoCard
-                      key={v.videoId}
-                      video={v}
-                      index={i}
-                      onClick={() => setOpenVideoId(v.videoId)}
-                    />
-                  ))}
-                </div>
+                <VideoTable videos={filteredVideos} onSelect={(id) => setOpenVideoId(id)} />
               )}
             </motion.div>
           ) : (
@@ -440,5 +412,192 @@ function StatTile({
       </p>
       <p className="mt-0.5 text-[11px] text-fg-dim">{sub}</p>
     </motion.div>
+  );
+}
+
+interface YTStats {
+  views: number;
+  likes: number;
+  comments: number;
+  duration: string;
+  publishedAt: string;
+}
+
+function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiAnalysis | null })[]; onSelect: (id: string) => void }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [stats, setStats] = useState<Record<string, YTStats | null>>({});
+  const [loadingStats, setLoadingStats] = useState<Record<string, boolean>>({});
+
+  async function fetchStats(videoId: string) {
+    if (stats[videoId] !== undefined) return;
+    setLoadingStats(prev => ({ ...prev, [videoId]: true }));
+    try {
+      const res = await fetch(`/api/videos/${videoId}/youtube-stats`);
+      const data = await res.json();
+      setStats(prev => ({ ...prev, [videoId]: data }));
+    } catch {
+      setStats(prev => ({ ...prev, [videoId]: null }));
+    } finally {
+      setLoadingStats(prev => ({ ...prev, [videoId]: false }));
+    }
+  }
+
+  function toggleExpand(videoId: string) {
+    if (expandedId === videoId) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(videoId);
+      fetchStats(videoId);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      {/* Table header */}
+      <div className="grid grid-cols-[44px_1fr_70px_70px_70px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+        <span></span>
+        <span>Title</span>
+        <span className="text-center">Gradi /25</span>
+        <span className="text-center">Manager</span>
+        <span className="text-center">Status</span>
+        <span className="text-center">Stats</span>
+        <span className="text-center">Rate</span>
+      </div>
+
+      {/* Rows */}
+      {videos.map((v) => {
+        const gradiScore = v.analysis?.gradiScore ?? 0;
+        const isExpanded = expandedId === v.videoId;
+        const vStats = stats[v.videoId];
+        const isLoadingRow = loadingStats[v.videoId];
+        const thumbUrl = v.thumbnailUrl || (v.youtubeUrl ? `https://img.youtube.com/vi/${extractYouTubeId(v.youtubeUrl)}/default.jpg` : null);
+
+        return (
+          <div key={v.videoId}>
+            <div
+              className="grid grid-cols-[44px_1fr_70px_70px_70px_70px_60px] gap-2 px-4 py-2.5 border-b border-border hover:bg-bg-elev/30 transition-colors items-center"
+            >
+              {/* Thumbnail */}
+              <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
+                {thumbUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-fg-dim">
+                    <Play className="h-3 w-3" />
+                  </div>
+                )}
+              </div>
+
+              {/* Title */}
+              <div className="min-w-0 cursor-pointer" onClick={() => toggleExpand(v.videoId)}>
+                <p className="text-sm font-medium text-fg truncate">{v.title}</p>
+                <p className="text-[10px] text-fg-muted mt-0.5">{v.subject} · {new Date(v.uploadedAt).toLocaleDateString()}</p>
+              </div>
+
+              {/* Gradi score /25 */}
+              <div className="text-center">
+                {gradiScore > 0 ? (
+                  <span className="text-mono text-sm font-semibold" style={{ color: gradiScore >= 4 ? "var(--emerald)" : gradiScore >= 3 ? "var(--amber)" : "var(--fg-muted)" }}>
+                    {(gradiScore * 5).toFixed(1)}<span className="text-[9px] text-fg-dim font-normal">/25</span>
+                  </span>
+                ) : <span className="text-[10px] text-fg-dim">—</span>}
+              </div>
+
+              {/* Manager */}
+              <div className="text-center">
+                {v.status === "manager_rated" ? (
+                  <span className="text-mono text-sm font-semibold" style={{ color: "var(--emerald)" }}>✓</span>
+                ) : <span className="text-[10px] text-fg-dim">pending</span>}
+              </div>
+
+              {/* Status */}
+              <div className="text-center">
+                <span className={cn(
+                  "inline-block px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium",
+                  v.status === "manager_rated" ? "bg-emerald-500/10 text-emerald-400" :
+                  v.status === "gradi_done" ? "bg-blue-500/10 text-blue-400" :
+                  v.status === "analyzing" ? "bg-amber-500/10 text-amber-400" :
+                  "bg-fg/5 text-fg-muted"
+                )}>
+                  {v.status === "manager_rated" ? "done" : v.status === "gradi_done" ? "gradi" : v.status}
+                </span>
+              </div>
+
+              {/* Stats toggle */}
+              <div className="text-center">
+                <button
+                  onClick={() => toggleExpand(v.videoId)}
+                  className={cn(
+                    "text-[10px] font-medium px-2 py-1 rounded-full border transition-colors",
+                    isExpanded ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" : "border-border text-fg-muted hover:text-fg hover:border-border-strong"
+                  )}
+                >
+                  {isExpanded ? "▾" : "▸"}
+                </button>
+              </div>
+
+              {/* Rate button */}
+              <div className="text-center">
+                <button
+                  onClick={() => onSelect(v.videoId)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-fg text-bg hover:opacity-80 transition-opacity"
+                >
+                  Rate
+                </button>
+              </div>
+            </div>
+
+            {/* Expandable analytics row */}
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden border-b border-border bg-bg-elev/20"
+                >
+                  <div className="px-4 py-4">
+                    {isLoadingRow ? (
+                      <div className="flex items-center gap-2 text-xs text-fg-muted">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Fetching YouTube analytics...
+                      </div>
+                    ) : vStats ? (
+                      <div className="space-y-3">
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">YouTube Analytics</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <div className="rounded-lg border border-border bg-bg p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-fg-muted">Views</p>
+                            <p className="text-mono text-xl font-bold text-fg mt-1">{vStats.views.toLocaleString()}</p>
+                          </div>
+                          <div className="rounded-lg border border-border bg-bg p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-fg-muted">Likes</p>
+                            <p className="text-mono text-xl font-bold text-fg mt-1">{vStats.likes.toLocaleString()}</p>
+                          </div>
+                          <div className="rounded-lg border border-border bg-bg p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-fg-muted">Comments</p>
+                            <p className="text-mono text-xl font-bold text-fg mt-1">{vStats.comments.toLocaleString()}</p>
+                          </div>
+                          <div className="rounded-lg border border-border bg-bg p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-fg-muted">Duration</p>
+                            <p className="text-mono text-xl font-bold text-fg mt-1">{vStats.duration || "—"}</p>
+                          </div>
+                        </div>
+                        {vStats.publishedAt && (
+                          <p className="text-[10px] text-fg-dim">Published: {new Date(vStats.publishedAt).toLocaleDateString()}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-fg-muted">Failed to load analytics</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
   );
 }
