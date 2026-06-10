@@ -11,7 +11,6 @@ import type { ProgramArchive } from "@/types/archive";
 import type { JWTPayload, Subject } from "@/types";
 import { WeekSummarySection } from "@/components/archive/WeekSummarySection";
 import { DropOffsSection } from "@/components/archive/DropOffsSection";
-import { LeaderboardSection } from "@/components/archive/LeaderboardSection";
 import { ScoreboardSection } from "@/components/archive/ScoreboardSection";
 import { BestContentSection } from "@/components/archive/BestContentSection";
 import { VideoLogSection } from "@/components/archive/VideoLogSection";
@@ -19,12 +18,11 @@ import { TrainingSessionsSection } from "@/components/archive/TrainingSessionsSe
 import { ProgramAnalytics } from "@/components/ProgramAnalytics";
 import { cn } from "@/lib/utils";
 
-type TabId = "summary" | "leaderboard" | "scoreboard" | "content" | "videolog" | "training" | "dropoffs" | "analytics";
+type TabId = "summary" | "analytics" | "scoreboard" | "content" | "videolog" | "training" | "dropoffs";
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "summary",     label: "Week Summary",    icon: Calendar },
   { id: "analytics",   label: "Analytics",        icon: BarChart3 },
-  { id: "leaderboard", label: "Leaderboard",      icon: Trophy },
   { id: "scoreboard",  label: "Scoreboard",       icon: TrendingDown },
   { id: "content",     label: "Best Content",     icon: Sparkles },
   { id: "videolog",    label: "Video Log",        icon: Video },
@@ -194,15 +192,7 @@ export default function ArchivePage() {
           {activeTab === "analytics" && (
             <ProgramAnalytics subjects={subjects} />
           )}
-          {activeTab === "leaderboard" && (
-            <LeaderboardSection
-              top={archive.topPerformers}
-              bottom={archive.bottomPerformers}
-              weekHeaders={archive.weekSummary.weekHeaders}
-              editMode={editMode && isManager}
-              onUpdate={(top, bottom) => updateArchive({ topPerformers: top, bottomPerformers: bottom })}
-            />
-          )}
+
           {activeTab === "scoreboard" && (
             <ScoreboardSection
               rows={archive.scoreboard}
