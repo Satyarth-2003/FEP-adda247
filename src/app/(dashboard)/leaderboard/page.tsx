@@ -41,6 +41,9 @@ function getWeekData(weekIdx: number): FacultyScore[] {
 export default function LeaderboardPage() {
   const [selectedTab, setSelectedTab] = useState<string>("live");
 
+  const [showAllTop, setShowAllTop] = useState(false);
+  const [showAllBottom, setShowAllBottom] = useState(false);
+
   const dataQ = useQuery<{ rows: VideoLogRow[] }>({
     queryKey: ["leaderboard-data"],
     queryFn: () => fetch("/api/archive/videolog").then(r => r.json()),
@@ -75,10 +78,11 @@ export default function LeaderboardPage() {
     return getWeekData(idx);
   }, [selectedTab, liveLeaderboard]);
 
-  const topPerformers = currentData.slice(0, 10);
+  const topPerformers = showAllTop ? currentData : currentData.slice(0, 10);
   const bottomPerformers = currentData.length > 3
-    ? currentData.slice(-Math.max(3, Math.ceil(currentData.length * 0.2)))
+    ? (showAllBottom ? currentData.slice(-Math.max(3, Math.ceil(currentData.length * 0.2))) : currentData.slice(-Math.max(3, Math.ceil(currentData.length * 0.2))).slice(0, 10))
     : [];
+  const totalBottom = currentData.length > 3 ? Math.max(3, Math.ceil(currentData.length * 0.2)) : 0;
 
   if (dataQ.isLoading) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-fg-muted" /></div>;
@@ -100,8 +104,8 @@ export default function LeaderboardPage() {
         {tabs.map(t => (
           <button key={t.key} onClick={() => setSelectedTab(t.key)}
             className={cn("relative px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
-              selectedTab === t.key ? "text-bg" : "text-fg-muted hover:text-fg border border-border")}>
-            {selectedTab === t.key && <motion.span layoutId="lb-pill" className="absolute inset-0 rounded-full bg-fg -z-10" transition={{ duration: 0.2 }} />}
+              selectedTab === t.key ? "text-white" : "text-fg-muted hover:text-fg border border-border")}>
+            {selectedTab === t.key && <motion.span layoutId="lb-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
             {t.label}
           </button>
         ))}
@@ -136,6 +140,12 @@ export default function LeaderboardPage() {
             </AnimatePresence>
             {topPerformers.length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
           </div>
+          {currentData.length > 10 && (
+            <button onClick={() => setShowAllTop(p => !p)}
+              className="mt-3 w-full text-center text-[11px] font-medium text-fg-muted hover:text-fg transition-colors py-2 rounded-lg border border-border hover:border-border-strong">
+              {showAllTop ? `Show less` : `Show all ${currentData.length} faculty`}
+            </button>
+          )}
         </div>
 
         {/* Bottom Performers */}
@@ -163,6 +173,12 @@ export default function LeaderboardPage() {
             </AnimatePresence>
             {bottomPerformers.length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
           </div>
+          {totalBottom > 10 && (
+            <button onClick={() => setShowAllBottom(p => !p)}
+              className="mt-3 w-full text-center text-[11px] font-medium text-fg-muted hover:text-fg transition-colors py-2 rounded-lg border border-border hover:border-border-strong">
+              {showAllBottom ? `Show less` : `Show all ${totalBottom} faculty`}
+            </button>
+          )}
         </div>
       </div>
     </div>
