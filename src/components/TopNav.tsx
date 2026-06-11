@@ -9,8 +9,10 @@ import {
   LayoutDashboard,
   Shield,
   Trophy,
+  ChevronDown,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { useTheme } from "./ThemeProvider";
@@ -25,6 +27,25 @@ export function TopNav({ userName, role }: TopNavProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
+  const [cohort, setCohort] = useState<string>("");
+  const [showCohortMenu, setShowCohortMenu] = useState(false);
+
+  const isManager = role === "fep_manager" || role === "fep_admin";
+
+  useEffect(() => {
+    if (isManager) {
+      const saved = localStorage.getItem("selectedCohort") || "June FEP";
+      setCohort(saved);
+    }
+  }, [isManager]);
+
+  function selectCohort(c: string) {
+    setCohort(c);
+    localStorage.setItem("selectedCohort", c);
+    setShowCohortMenu(false);
+    // Trigger a custom event so dashboard can react
+    window.dispatchEvent(new CustomEvent("cohort-change", { detail: c }));
+  }
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -54,6 +75,31 @@ export function TopNav({ userName, role }: TopNavProps) {
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-ring text-emerald-500" />
             {role === "fep_manager" ? "Manager" : "Faculty"}
           </div>
+
+          {/* Cohort selector for managers */}
+          {isManager && cohort && (
+            <div className="relative">
+              <button
+                onClick={() => setShowCohortMenu(p => !p)}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-bg-elev/50 px-3 py-1 text-[11px] font-medium text-fg-muted hover:text-fg hover:border-border-strong transition-colors"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                {cohort}
+                <ChevronDown className="h-3 w-3" />
+              </button>
+              {showCohortMenu && (
+                <div className="absolute top-full mt-1 left-0 z-50 rounded-lg border border-border bg-bg-elev shadow-lg py-1 min-w-[140px]">
+                  {["March FEP", "June FEP"].map(c => (
+                    <button key={c} onClick={() => selectCohort(c)}
+                      className={cn("block w-full text-left px-3 py-1.5 text-xs transition-colors",
+                        cohort === c ? "text-fg font-medium bg-bg-elev/80" : "text-fg-muted hover:text-fg hover:bg-bg-elev/60")}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <nav className="flex items-center gap-1 ml-2">
             {navItems.map((item) => {

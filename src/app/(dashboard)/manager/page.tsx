@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon } from "lucide-react";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -46,6 +46,19 @@ export default function ManagerDashboard() {
   const [activeSubjectTab, setActiveSubjectTab] = useState("all");
   const [view, setView] = useState<"roster" | "analytics" | "cohorts">("roster");
   const [selectedCohort, setSelectedCohort] = useState<string>("June FEP");
+  const [activeCohort, setActiveCohort] = useState<string>("June FEP");
+
+  // Listen for cohort changes from TopNav
+  useEffect(() => {
+    const saved = localStorage.getItem("selectedCohort") || "June FEP";
+    setActiveCohort(saved);
+    function handleCohortChange(e: Event) {
+      const c = (e as CustomEvent).detail;
+      setActiveCohort(c);
+    }
+    window.addEventListener("cohort-change", handleCohortChange);
+    return () => window.removeEventListener("cohort-change", handleCohortChange);
+  }, []);
 
   const meQ = useQuery({
     queryKey: ["me"],
@@ -117,6 +130,11 @@ export default function ManagerDashboard() {
     [aggQ.data, selectedFaculty]
   );
 
+  // If March FEP is selected, show the March cohort dashboard
+  if (activeCohort === "March FEP") {
+    return <MarchFEPDashboard />;
+  }
+
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-8 md:py-10">
       <motion.div
@@ -145,14 +163,14 @@ export default function ManagerDashboard() {
                   key={v.id}
                   onClick={() => setView(v.id)}
                   className={cn(
-                    "relative flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                    active ? "text-bg" : "text-fg-muted hover:text-fg"
+                    "relative flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors isolate",
+                    active ? "text-white dark:text-black" : "text-fg-muted hover:text-fg"
                   )}
                 >
                   {active && (
                     <motion.span
                       layoutId="manager-view-pill"
-                      className="absolute inset-0 -z-10 rounded-full bg-fg"
+                      className="absolute inset-0 -z-10 rounded-full bg-neutral-900 dark:bg-neutral-100"
                       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                     />
                   )}
@@ -624,7 +642,7 @@ function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string
         {cohorts.map(c => (
           <button key={c} onClick={() => onCohortChange(c)}
             className={cn(
-              "relative px-4 py-2 rounded-full text-xs font-medium transition-colors",
+              "relative px-4 py-2 rounded-full text-xs font-medium transition-colors isolate",
               selectedCohort === c ? "text-white" : "text-fg-muted hover:text-fg border border-border"
             )}>
             {selectedCohort === c && <motion.span layoutId="cohort-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
@@ -676,6 +694,120 @@ function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string
       <p className="text-[10px] text-fg-dim">
         {faculty.length} faculty in {selectedCohort} · Tracking via Adjust
       </p>
+    </div>
+  );
+}
+
+function MarchFEPDashboard() {
+  const cohortQ = useQuery({
+    queryKey: ["cohorts", "March FEP"],
+    queryFn: async () => {
+      const res = await fetch(`/api/cohorts?cohort=${encodeURIComponent("March FEP")}`);
+      return res.json() as Promise<{ faculty: { userId: string; name: string; email: string; adjustToken: string | null; trackingLink: string | null }[]; total: number }>;
+    },
+  });
+
+  const adjustQ = useQuery({
+    queryKey: ["adjust-stats"],
+    queryFn: async () => {
+      const faculty = cohortQ.data?.faculty ?? [];
+      const tokens = faculty.filter(f => f.adjustToken).map(f => f.adjustToken!);
+      if (tokens.length === 0) return { trackers: [] };
+      const res = await fetch(`/api/adjust?trackers=${tokens.join(",")}`);
+      return res.json() as Promise<{ trackers: { token: string; installs: number; sessions: number }[]; error?: string }>;
+    },
+    enabled: !!cohortQ.data?.faculty?.length,
+  });
+
+  const faculty = cohortQ.data?.faculty ?? [];
+  const adjustMap = new Map((adjustQ.data?.trackers ?? []).map(t => [t.token, t]));
+  const totalInstalls = (adjustQ.data?.trackers ?? []).reduce((sum, t) => sum + t.installs, 0);
+
+  return (
+    <div className="mx-auto max-w-[1400px] px-6 py-8 md:py-10">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-bg-elev/50 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-fg-muted">
+            <Sparkles className="h-3 w-3" />
+            March FEP Cohort
+          </div>
+        </div>
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight">App Install Tracking</h1>
+        <p className="text-sm text-fg-muted mt-1">Adjust-powered install attribution for March FEP faculty</p>
+      </motion.div>
+
+      {/* Stats tiles */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="glass rounded-xl p-4">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Faculty</p>
+          <p className="text-mono text-3xl font-bold">{faculty.length}</p>
+        </div>
+        <div className="glass rounded-xl p-4">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Total Installs (30d)</p>
+          <p className="text-mono text-3xl font-bold text-emerald-400">{totalInstalls.toLocaleString()}</p>
+        </div>
+        <div className="glass rounded-xl p-4">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Tracking Links</p>
+          <p className="text-mono text-3xl font-bold">{faculty.filter(f => f.adjustToken).length}</p>
+        </div>
+      </div>
+
+      {adjustQ.data?.error && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-400 mb-4">
+          {adjustQ.data.error}
+        </div>
+      )}
+
+      {/* Faculty table with install data */}
+      <div className="glass rounded-2xl overflow-hidden">
+        <div className="grid grid-cols-[40px_1fr_180px_100px_90px_100px] gap-2 px-5 py-3 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+          <span>#</span>
+          <span>Faculty</span>
+          <span>Email</span>
+          <span className="text-center">Token</span>
+          <span className="text-center">Installs</span>
+          <span className="text-center">Link</span>
+        </div>
+
+        {cohortQ.isLoading ? (
+          <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
+        ) : (
+          faculty.map((f, i) => {
+            const stats = f.adjustToken ? adjustMap.get(f.adjustToken) : null;
+            return (
+              <div key={f.userId} className="grid grid-cols-[40px_1fr_180px_100px_90px_100px] gap-2 px-5 py-3 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+                <span className="text-xs text-fg-muted text-mono">{i + 1}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-fg truncate">{f.name}</p>
+                </div>
+                <span className="text-[11px] text-fg-muted truncate">{f.email}</span>
+                <div className="text-center">
+                  {f.adjustToken ? (
+                    <span className="text-mono text-[10px] px-1.5 py-0.5 rounded bg-bg-elev border border-border text-fg-muted">{f.adjustToken}</span>
+                  ) : <span className="text-[10px] text-fg-dim">—</span>}
+                </div>
+                <div className="text-center">
+                  {adjustQ.isLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin text-fg-muted inline" />
+                  ) : (
+                    <span className={cn("text-mono text-sm font-bold", (stats?.installs ?? 0) > 0 ? "text-emerald-400" : "text-fg-muted")}>
+                      {stats?.installs ?? 0}
+                    </span>
+                  )}
+                </div>
+                <div className="text-center">
+                  {f.trackingLink ? (
+                    <a href={f.trackingLink} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300">
+                      <LinkIcon className="h-3 w-3" /> Open
+                    </a>
+                  ) : <span className="text-[10px] text-fg-dim">—</span>}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

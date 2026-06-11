@@ -103,7 +103,7 @@ export default function LeaderboardPage() {
       <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-2">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setSelectedTab(t.key)}
-            className={cn("relative px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
+            className={cn("relative px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors isolate",
               selectedTab === t.key ? "text-white" : "text-fg-muted hover:text-fg border border-border")}>
             {selectedTab === t.key && <motion.span layoutId="lb-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
             {t.label}
