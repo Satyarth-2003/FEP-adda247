@@ -291,15 +291,6 @@ export default function ManagerDashboard() {
               className="space-y-5"
             >
               <div className="glass-strong rounded-2xl p-5 flex items-center gap-5">
-                {(facultyQ.data?.avgGradiScore ?? 0) > 0 && (facultyQ.data?.pctRatedByManager ?? 0) > 0 ? (
-                  <ScoreRing
-                    score={(facultyQ.data?.avgGradiScore ?? 0) * 10}
-                    max={50}
-                    size={88}
-                    stroke={6}
-                    label="/ 50"
-                  />
-                ) : null}
                 <div className="flex-1">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-fg-muted">
                     Faculty Detail
