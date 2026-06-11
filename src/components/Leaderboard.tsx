@@ -76,7 +76,7 @@ export function Leaderboard({
                   {row.name}
                 </p>
                 <p className="text-[11px] text-fg-muted truncate">
-                  {row.subjects.join(" · ") || row.email}
+                  {row.email}
                 </p>
               </div>
 

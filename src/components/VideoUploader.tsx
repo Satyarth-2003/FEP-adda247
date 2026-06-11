@@ -39,9 +39,9 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           youtubeUrl: url,
-          subjectId,
-          subject: subj?.name ?? subjectId,
-          title,
+          subjectId: subjectId || subjects[0]?.subjectId || "",
+          subject: subj?.name ?? subjectId ?? "",
+          title: title || "Untitled Video",
           ...(managerMode && facultyId ? { facultyId } : {}),
         }),
       });
@@ -82,13 +82,14 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
               onClick={() => { if (!loading) { setOpen(false); onClose?.(); } }}
             >
               <div style={{ position: "absolute", inset: 0, background: "var(--backdrop)", backdropFilter: "blur(4px)" }} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <motion.div
                 initial={{ opacity: 0, y: 20, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.97 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                 onClick={(e) => e.stopPropagation()}
-                style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(448px, calc(100vw - 48px))", background: "var(--bg-elev)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
+                style={{ width: "min(448px, calc(100vw - 48px))", background: "var(--bg-elev)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
               >
               <div className="flex items-start justify-between mb-5">
                 <div>
@@ -126,56 +127,6 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-medium uppercase tracking-wider text-fg-muted mb-2">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                    placeholder="Photosynthesis — Class 10"
-                    className="w-full rounded-lg border border-border bg-bg-elev/60 px-3 py-2.5 text-sm outline-none focus:border-fg/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-medium uppercase tracking-wider text-fg-muted mb-2">
-                    Subject
-                  </label>
-                  <select
-                    value={subjectId}
-                    onChange={(e) => setSubjectId(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-bg-elev/60 px-3 py-2.5 text-sm outline-none focus:border-fg/30"
-                  >
-                    {subjects.map((s) => (
-                      <option key={s.subjectId} value={s.subjectId}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {managerMode && facultyList && facultyList.length > 0 && (
-                  <div>
-                    <label className="block text-[11px] font-medium uppercase tracking-wider text-fg-muted mb-2">
-                      Assign to Faculty
-                    </label>
-                    <select
-                      value={facultyId}
-                      onChange={(e) => setFacultyId(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-bg-elev/60 px-3 py-2.5 text-sm outline-none focus:border-fg/30"
-                    >
-                      {facultyList.map((f) => (
-                        <option key={f.userId} value={f.userId}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
                 {error && (
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-400">
                     {error}
@@ -201,6 +152,7 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
                 </button>
               </form>
             </motion.div>
+            </div>
             </motion.div>
           )}
         </AnimatePresence>

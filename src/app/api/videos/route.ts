@@ -5,6 +5,7 @@ import {
   QueryCommand,
   ScanCommand,
   UpdateCommand,
+  GetCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
@@ -87,9 +88,9 @@ export async function POST(req: Request) {
   } else if (user.role !== "fep_faculty") {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
-  if (!youtubeUrl || !subjectId || !title) {
+  if (!youtubeUrl) {
     return NextResponse.json(
-      { error: "youtubeUrl, subjectId, title required" },
+      { error: "youtubeUrl required" },
       { status: 400 }
     );
   }
@@ -100,15 +101,55 @@ export async function POST(req: Request) {
     );
   }
 
+  // Auto-assign subject from faculty's profile if not provided
+  let resolvedSubjectId = subjectId || "";
+  let resolvedSubject = subject || "";
+  let resolvedTitle = title || "Untitled Video";
+
+  if (!resolvedSubjectId) {
+    // Look up faculty's subjects from their user profile
+    const userRes = await ddb.send(new GetCommand({ TableName: TABLES.USERS, Key: { userId: targetFacultyId } }));
+    const facultyUser = userRes.Item;
+    if (facultyUser) {
+      if (!targetFacultyName || targetFacultyName === targetFacultyId) {
+        targetFacultyName = (facultyUser.name as string) ?? targetFacultyId;
+      }
+      const userSubjects = (facultyUser.subjects as string[]) ?? [];
+      if (userSubjects.length > 0) {
+        resolvedSubjectId = userSubjects[0];
+        resolvedSubject = resolvedSubjectId;
+      }
+      // Fallback: infer from examTarget/teachingSubject
+      if (!resolvedSubjectId) {
+        const examTarget = ((facultyUser.examTarget as string) ?? "").toLowerCase();
+        const teachingSub = ((facultyUser.teachingSubject as string) ?? "").toLowerCase();
+        const combined = examTarget + " " + teachingSub;
+        if (combined.includes("ssc") || combined.includes("one day")) resolvedSubjectId = "ssc";
+        else if (combined.includes("neet") || combined.includes("biology") || combined.includes("zoology")) resolvedSubjectId = "neet";
+        else if (combined.includes("banking") || combined.includes("bank") || combined.includes("insurance")) resolvedSubjectId = "banking";
+        else if (combined.includes("upsc") || combined.includes("psc") || combined.includes("civil service")) resolvedSubjectId = "upsc";
+        else if (combined.includes("railway") || combined.includes("rrb")) resolvedSubjectId = "railway";
+        else if (combined.includes("cuet")) resolvedSubjectId = "cuet";
+        else if (combined.includes("ugc") || combined.includes("net")) resolvedSubjectId = "ugc-net";
+        else if (combined.includes("teaching") || combined.includes("ctet") || combined.includes("tet") || combined.includes("cdp")) resolvedSubjectId = "teaching";
+        else if (combined.includes("nursing")) resolvedSubjectId = "nursing";
+        else if (combined.includes("gate") || combined.includes("engineering") || combined.includes("iti") || combined.includes("jee")) resolvedSubjectId = "tech";
+        else if (combined.includes("foundation") || combined.includes("class") || combined.includes("academic") || combined.includes("board")) resolvedSubjectId = "foundation";
+        else resolvedSubjectId = "ssc"; // default fallback
+        resolvedSubject = resolvedSubjectId;
+      }
+    }
+  }
+
   const videoId = uuid();
   const video: Video = {
     facultyId: targetFacultyId,
     facultyName: targetFacultyName,
     videoId,
     youtubeUrl,
-    subject: subject ?? subjectId,
-    subjectId,
-    title,
+    subject: resolvedSubject ?? resolvedSubjectId,
+    subjectId: resolvedSubjectId,
+    title: resolvedTitle,
     thumbnailUrl: youtubeThumb(youtubeUrl) ?? undefined,
     uploadedAt: new Date().toISOString(),
     status: "analyzing",
