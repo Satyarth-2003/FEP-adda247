@@ -1,49 +1,45 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import archiveData from "@/data/programArchive.json";
 
 interface VideoLogRow {
   trainee: string;
   facultyId: string;
   date: string | null;
-  gradiScore: number | null;
-  gradiContrib: number | null;
-  managerTotal: number | null;
   combinedTotal: number | null;
   videoId?: string;
 }
 
-interface YTStats {
-  views: number;
-  likes: number;
-  comments: number;
-}
-
-interface FacultyYT {
+interface FacultyScore {
   name: string;
-  facultyId: string;
-  views: number;
-  subs: number; // using likes as proxy for subs
+  score: number;
 }
 
-const AVATAR_COLORS = [
-  "#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6",
-  "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16",
-];
-
+const AVATAR_COLORS = ["#ef4444","#f59e0b","#10b981","#3b82f6","#8b5cf6","#ec4899","#14b8a6","#f97316","#6366f1","#84cc16"];
 function getAvatarColor(name: string) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
+// Parse archive scoreboard into week-wise data
+const scoreboard = (archiveData as { scoreboard: { name: string; wk1: number; wk2: number; wk3: number; wk4: number; total: number }[] }).scoreboard ?? [];
+const weekLabels = ["Wk 1 · 6–12 Apr", "Wk 2 · 13–19 Apr", "Wk 3 · 20–26 Apr", "Wk 4 · 27 Apr–3 May"];
+
+function getWeekData(weekIdx: number): FacultyScore[] {
+  const key = `wk${weekIdx + 1}` as "wk1" | "wk2" | "wk3" | "wk4";
+  return scoreboard
+    .map(s => ({ name: s.name, score: s[key] ?? 0 }))
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+}
+
 export default function LeaderboardPage() {
-  const [selectedWeek, setSelectedWeek] = useState<string>("live");
-  const [ytData, setYtData] = useState<Record<string, YTStats>>({});
-  const [loadingYt, setLoadingYt] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<string>("live");
 
   const dataQ = useQuery<{ rows: VideoLogRow[] }>({
     queryKey: ["leaderboard-data"],
@@ -53,65 +49,36 @@ export default function LeaderboardPage() {
 
   const rows = dataQ.data?.rows ?? [];
 
-  // Week options
-  const weeks = useMemo(() => {
-    const weekSet = new Map<string, string>();
+  // Live leaderboard from actual scored videos
+  const liveLeaderboard: FacultyScore[] = useMemo(() => {
+    const byFaculty = new Map<string, { name: string; scores: number[] }>();
     for (const r of rows) {
-      if (!r.date) continue;
-      const d = new Date(r.date);
-      const weekStart = new Date(d);
-      weekStart.setDate(d.getDate() - d.getDay());
-      const key = weekStart.toISOString().split("T")[0];
-      const label = `Week of ${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-      weekSet.set(key, label);
+      if (!byFaculty.has(r.facultyId)) byFaculty.set(r.facultyId, { name: r.trainee, scores: [] });
+      if (r.combinedTotal != null) byFaculty.get(r.facultyId)!.scores.push(r.combinedTotal);
     }
-    return [{ key: "live", label: "Live" }, ...Array.from(weekSet.entries()).map(([key, label]) => ({ key, label })).sort((a, b) => b.key.localeCompare(a.key))];
+    return Array.from(byFaculty.values())
+      .map(e => ({ name: e.name, score: e.scores.length ? e.scores.reduce((a, b) => a + b, 0) / e.scores.length : 0 }))
+      .filter(e => e.score > 0)
+      .sort((a, b) => b.score - a.score);
   }, [rows]);
 
-  // Fetch YT stats per faculty
-  useEffect(() => {
-    if (rows.length === 0 || Object.keys(ytData).length > 0 || loadingYt) return;
-    const videoIds = new Map<string, { name: string; vids: string[] }>();
-    for (const r of rows) {
-      if (!r.videoId) continue;
-      if (!videoIds.has(r.facultyId)) videoIds.set(r.facultyId, { name: r.trainee, vids: [] });
-      videoIds.get(r.facultyId)!.vids.push(r.videoId);
-    }
-    setLoadingYt(true);
-    (async () => {
-      const results: Record<string, YTStats> = {};
-      for (const [fId, { vids }] of videoIds.entries()) {
-        let views = 0, likes = 0, comments = 0;
-        for (const vid of vids.slice(0, 10)) {
-          try {
-            const res = await fetch(`/api/videos/${vid}/youtube-stats`);
-            if (res.ok) { const d = await res.json(); views += d.views||0; likes += d.likes||0; comments += d.comments||0; }
-          } catch { /* skip */ }
-        }
-        results[fId] = { views, likes, comments };
-      }
-      setYtData(results);
-      setLoadingYt(false);
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows.length]);
+  // Tabs: Live + Week 1-4
+  const tabs = [
+    { key: "live", label: "Live" },
+    ...weekLabels.map((l, i) => ({ key: `wk${i}`, label: l })),
+  ];
 
-  // Build faculty list sorted by views
-  const byViews: FacultyYT[] = useMemo(() => {
-    const map = new Map<string, { name: string; views: number; subs: number }>();
-    for (const r of rows) {
-      if (!map.has(r.facultyId)) map.set(r.facultyId, { name: r.trainee, views: 0, subs: 0 });
-    }
-    for (const [fId, stats] of Object.entries(ytData)) {
-      const e = map.get(fId);
-      if (e) { e.views = stats.views; e.subs = stats.likes; }
-    }
-    return Array.from(map.entries())
-      .map(([fId, e]) => ({ name: e.name, facultyId: fId, views: e.views, subs: e.subs }))
-      .sort((a, b) => b.views - a.views);
-  }, [rows, ytData]);
+  // Get current data based on selected tab
+  const currentData: FacultyScore[] = useMemo(() => {
+    if (selectedTab === "live") return liveLeaderboard;
+    const idx = parseInt(selectedTab.replace("wk", ""));
+    return getWeekData(idx);
+  }, [selectedTab, liveLeaderboard]);
 
-  const bottomViews = useMemo(() => [...byViews].filter(f => f.views > 0).sort((a, b) => a.views - b.views).slice(0, Math.max(2, Math.ceil(byViews.length * 0.2))), [byViews]);
+  const topPerformers = currentData.slice(0, 10);
+  const bottomPerformers = currentData.length > 3
+    ? currentData.slice(-Math.max(3, Math.ceil(currentData.length * 0.2)))
+    : [];
 
   if (dataQ.isLoading) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-fg-muted" /></div>;
@@ -120,31 +87,29 @@ export default function LeaderboardPage() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 md:px-6 py-8 md:py-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Trophy className="h-5 w-5 text-amber-500" />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Faculty Leaderboard</h1>
-            <p className="text-[11px] text-fg-muted">Adda247 EduSkill</p>
-          </div>
+      <div className="flex items-center gap-3 mb-6">
+        <Trophy className="h-5 w-5 text-amber-500" />
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Faculty Leaderboard</h1>
+          <p className="text-[11px] text-fg-muted">Adda247 EduSkill</p>
         </div>
       </div>
 
-      {/* Week selector */}
+      {/* Week selector nav */}
       <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-2">
-        {weeks.map(w => (
-          <button key={w.key} onClick={() => setSelectedWeek(w.key)}
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setSelectedTab(t.key)}
             className={cn("relative px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
-              selectedWeek === w.key ? "text-bg" : "text-fg-muted hover:text-fg border border-border")}>
-            {selectedWeek === w.key && <motion.span layoutId="week-pill" className="absolute inset-0 rounded-full bg-fg -z-10" transition={{ duration: 0.2 }} />}
-            {w.label}
+              selectedTab === t.key ? "text-bg" : "text-fg-muted hover:text-fg border border-border")}>
+            {selectedTab === t.key && <motion.span layoutId="lb-pill" className="absolute inset-0 rounded-full bg-fg -z-10" transition={{ duration: 0.2 }} />}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* Two-column layout: Top Performers & Bottom Performers */}
+      {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Column 1: Top Performers */}
+        {/* Top Performers */}
         <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -152,35 +117,28 @@ export default function LeaderboardPage() {
               <h3 className="text-sm font-semibold">Top Performers</h3>
             </div>
             <span className="text-[10px] rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 px-2 py-0.5">
-              {byViews.filter(f => f.views > 0).length} faculty
+              {topPerformers.length} faculty
             </span>
           </div>
-          {loadingYt ? (
-            <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
-          ) : (
-            <div className="space-y-1">
-              {byViews.filter(f => f.views > 0).slice(0, 10).map((f, i) => (
-                <motion.div key={f.facultyId}
-                  initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-2 hover:bg-bg-elev/60 transition-colors"
-                >
-                  <span className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono",
-                    i === 0 ? "bg-amber-500/15 text-amber-500 border border-amber-500/30" :
-                    i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
+          <div className="space-y-1">
+            <AnimatePresence>
+              {topPerformers.map((f, i) => (
+                <motion.div key={f.name} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                  className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-2 hover:bg-bg-elev/60 transition-colors">
+                  <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono",
+                    i === 0 ? "bg-amber-500/15 text-amber-500 border border-amber-500/30" : i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
                   )}>{i + 1}</span>
                   <ColorAvatar name={f.name} />
                   <span className="flex-1 text-xs font-medium text-fg/90 truncate">{f.name}</span>
-                  <span className="text-mono text-sm font-bold text-emerald-400">{f.views.toLocaleString("en-IN")}</span>
+                  <span className="text-mono text-sm font-bold text-emerald-400">{f.score.toFixed(1)}</span>
                 </motion.div>
               ))}
-              {byViews.filter(f => f.views > 0).length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
-            </div>
-          )}
+            </AnimatePresence>
+            {topPerformers.length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
+          </div>
         </div>
 
-        {/* Column 2: Bottom Performers */}
+        {/* Bottom Performers */}
         <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -189,69 +147,24 @@ export default function LeaderboardPage() {
             </div>
             <span className="text-[10px] rounded-full border border-rose-500/25 bg-rose-500/10 text-rose-500 px-2 py-0.5">Bottom 20%</span>
           </div>
-          {loadingYt ? (
-            <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
-          ) : (
-            <div className="space-y-1">
-              {bottomViews.map((f, i) => (
-                <motion.div key={f.facultyId}
-                  initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-2 hover:bg-bg-elev/60 transition-colors"
-                >
+          <div className="space-y-1">
+            <AnimatePresence>
+              {bottomPerformers.map((f, i) => (
+                <motion.div key={f.name} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                  className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-2 hover:bg-bg-elev/60 transition-colors">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                    {byViews.length - bottomViews.length + i + 1}
+                    {currentData.length - bottomPerformers.length + i + 1}
                   </span>
                   <ColorAvatar name={f.name} />
                   <span className="flex-1 text-xs font-medium text-fg/90 truncate">{f.name}</span>
-                  <span className="text-mono text-sm font-bold text-rose-500">{f.views.toLocaleString("en-IN")}</span>
+                  <span className="text-mono text-sm font-bold text-rose-500">{f.score.toFixed(1)}</span>
                 </motion.div>
               ))}
-              {bottomViews.length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
-            </div>
-          )}
+            </AnimatePresence>
+            {bottomPerformers.length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function RankingCard({ title, color, badge, rows, valueFormatter, loading }: {
-  title: string; color: string; badge: string;
-  rows: FacultyYT[]; valueFormatter: (f: FacultyYT) => string; loading: boolean;
-}) {
-  return (
-    <div className="glass rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-          <h3 className="text-sm font-semibold">{title}</h3>
-        </div>
-        <span className="text-[10px] rounded-full border border-border bg-bg-elev/50 px-2 py-0.5 text-fg-muted">{badge}</span>
-      </div>
-      {loading ? (
-        <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
-      ) : (
-        <div className="space-y-1">
-          {rows.map((f, i) => (
-            <motion.div key={f.facultyId}
-              initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.03 }}
-              className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-2 hover:bg-bg-elev/60 transition-colors"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono text-fg-muted">
-                {i + 1}
-              </span>
-              <ColorAvatar name={f.name} />
-              <span className="flex-1 text-xs font-medium text-fg/90 truncate">{f.name}</span>
-              <span className="text-mono text-sm font-bold" style={{ color }}>
-                {valueFormatter(f)}
-              </span>
-            </motion.div>
-          ))}
-          {rows.length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
-        </div>
-      )}
     </div>
   );
 }
@@ -260,8 +173,7 @@ function ColorAvatar({ name }: { name: string }) {
   const initial = name.charAt(0).toUpperCase();
   const color = getAvatarColor(name);
   return (
-    <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold shrink-0 text-white"
-      style={{ background: color }}>
+    <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold shrink-0 text-white" style={{ background: color }}>
       {initial}
     </span>
   );
