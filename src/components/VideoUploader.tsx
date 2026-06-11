@@ -19,10 +19,28 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
   const [open, setOpen] = useState(autoOpen ?? false);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
+  const [fetchingTitle, setFetchingTitle] = useState(false);
   const [subjectId, setSubjectId] = useState(subjects[0]?.subjectId ?? "");
   const [facultyId, setFacultyId] = useState(facultyList?.[0]?.userId ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Auto-fetch title from YouTube when URL is valid
+  async function handleUrlChange(newUrl: string) {
+    setUrl(newUrl);
+    const ytId = extractYouTubeId(newUrl);
+    if (ytId) {
+      setFetchingTitle(true);
+      try {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ytId}&key=AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs`);
+        const data = await res.json();
+        if (data.items?.[0]?.snippet?.title) {
+          setTitle(data.items[0].snippet.title);
+        }
+      } catch { /* ignore */ }
+      setFetchingTitle(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,7 +85,7 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
           className="flex items-center gap-2 rounded-full bg-fg px-4 py-2 text-sm font-medium text-bg transition-colors hover:bg-fg/90"
         >
           <Upload className="h-3.5 w-3.5" />
-          Upload Video
+          Upload YouTube Link
         </motion.button>
       )}
 
@@ -94,10 +112,10 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
               <div className="flex items-start justify-between mb-5">
                 <div>
                   <h2 className="text-lg font-semibold tracking-tight">
-                    Upload Video
+                    Upload YouTube Video Link
                   </h2>
                   <p className="text-xs text-fg-muted mt-0.5">
-                    Paste a YouTube link — Gradi will analyze it automatically.
+                    Paste a YouTube link — title auto-fetched, Gradi will analyze it.
                   </p>
                 </div>
                 <button
@@ -119,12 +137,17 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
                     <input
                       type="url"
                       value={url}
-                      onChange={(e) => setUrl(e.target.value)}
+                      onChange={(e) => handleUrlChange(e.target.value)}
                       required
                       placeholder="https://youtube.com/watch?v=..."
                       className="w-full rounded-lg border border-border bg-bg-elev/60 pl-9 pr-3 py-2.5 text-sm outline-none focus:border-fg/30"
                     />
                   </div>
+                  {title && (
+                    <p className="mt-2 text-xs text-fg-muted flex items-center gap-1">
+                      {fetchingTitle ? "Fetching..." : `📹 ${title}`}
+                    </p>
+                  )}
                 </div>
 
                 {error && (
@@ -146,7 +169,7 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
                   ) : (
                     <>
                       <Upload className="h-3.5 w-3.5" />
-                      Upload &amp; Analyze
+                      Submit &amp; Analyze
                     </>
                   )}
                 </button>

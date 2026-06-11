@@ -194,12 +194,6 @@ export default function ManagerDashboard() {
             </span>
             <span>videos</span>
           </div>
-          <VideoUploader
-            subjects={subjects}
-            onSuccess={() => { aggQ.refetch(); }}
-            managerMode
-            facultyList={(aggQ.data?.leaderboard ?? []).map(f => ({ userId: f.userId, name: f.name }))}
-          />
         </div>
       </motion.div>
 
@@ -451,6 +445,14 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [stats, setStats] = useState<Record<string, YTStats | null>>({});
   const [loadingStats, setLoadingStats] = useState<Record<string, boolean>>({});
+  const [ratingFilter, setRatingFilter] = useState<"all" | "rated" | "unrated">("all");
+
+  const filteredVideos = videos.filter(v => {
+    if (ratingFilter === "rated") return v.status === "manager_rated";
+    if (ratingFilter === "unrated") return v.status !== "manager_rated";
+    return true;
+  });
+  const [loadingStats, setLoadingStats] = useState<Record<string, boolean>>({});
 
   async function fetchStats(videoId: string) {
     if (stats[videoId] !== undefined) return;
@@ -476,7 +478,19 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
   }
 
   return (
-    <div className="rounded-xl border border-border overflow-hidden">
+    <div className="space-y-3">
+      {/* Rating status filter */}
+      <div className="flex items-center gap-1">
+        {(["all", "unrated", "rated"] as const).map(f => (
+          <button key={f} onClick={() => setRatingFilter(f)}
+            className={cn("px-3 py-1 rounded-full text-[11px] font-medium transition-colors",
+              ratingFilter === f ? "bg-fg text-white dark:text-black" : "text-fg-muted border border-border hover:text-fg")}>
+            {f === "all" ? `All (${videos.length})` : f === "unrated" ? `Unrated (${videos.filter(v => v.status !== "manager_rated").length})` : `Rated (${videos.filter(v => v.status === "manager_rated").length})`}
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-border overflow-hidden">
       {/* Table header */}
       <div className="grid grid-cols-[44px_1fr_70px_70px_70px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
         <span></span>
@@ -489,7 +503,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
       </div>
 
       {/* Rows */}
-      {videos.map((v) => {
+      {filteredVideos.map((v) => {
         const gradiScore = v.analysis?.gradiScore ?? 0;
         const isExpanded = expandedId === v.videoId;
         const vStats = stats[v.videoId];
@@ -622,6 +636,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
