@@ -702,6 +702,8 @@ function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string
 }
 
 function MarchFEPDashboard() {
+  const TARGET_INSTALLS = 100; // Target per faculty member
+
   const cohortQ = useQuery({
     queryKey: ["cohorts", "March FEP"],
     queryFn: async () => {
@@ -717,7 +719,7 @@ function MarchFEPDashboard() {
       const tokens = faculty.filter(f => f.adjustToken).map(f => f.adjustToken!);
       if (tokens.length === 0) return { trackers: [] };
       const res = await fetch(`/api/adjust?trackers=${tokens.join(",")}`);
-      return res.json() as Promise<{ trackers: { token: string; installs: number; sessions: number }[]; error?: string }>;
+      return res.json() as Promise<{ trackers: { token: string; installs: number; clicks: number; impressions: number; sessions: number; reattributions: number; daus: number }[]; error?: string }>;
     },
     enabled: !!cohortQ.data?.faculty?.length,
   });
@@ -725,6 +727,9 @@ function MarchFEPDashboard() {
   const faculty = cohortQ.data?.faculty ?? [];
   const adjustMap = new Map((adjustQ.data?.trackers ?? []).map(t => [t.token, t]));
   const totalInstalls = (adjustQ.data?.trackers ?? []).reduce((sum, t) => sum + t.installs, 0);
+  const totalClicks = (adjustQ.data?.trackers ?? []).reduce((sum, t) => sum + t.clicks, 0);
+  const totalSessions = (adjustQ.data?.trackers ?? []).reduce((sum, t) => sum + t.sessions, 0);
+  const totalTarget = faculty.filter(f => f.adjustToken).length * TARGET_INSTALLS;
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-8 md:py-10">
@@ -740,18 +745,45 @@ function MarchFEPDashboard() {
       </motion.div>
 
       {/* Stats tiles */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="glass rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Faculty</p>
-          <p className="text-mono text-3xl font-bold">{faculty.length}</p>
+          <p className="text-mono text-2xl font-bold">{faculty.length}</p>
         </div>
         <div className="glass rounded-xl p-4">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Total Installs (30d)</p>
-          <p className="text-mono text-3xl font-bold text-emerald-400">{totalInstalls.toLocaleString()}</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Link Clicks</p>
+          <p className="text-mono text-2xl font-bold text-blue-400">{totalClicks.toLocaleString()}</p>
         </div>
         <div className="glass rounded-xl p-4">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Tracking Links</p>
-          <p className="text-mono text-3xl font-bold">{faculty.filter(f => f.adjustToken).length}</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Installs</p>
+          <p className="text-mono text-2xl font-bold text-emerald-400">{totalInstalls.toLocaleString()}</p>
+        </div>
+        <div className="glass rounded-xl p-4">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Sessions</p>
+          <p className="text-mono text-2xl font-bold text-amber-400">{totalSessions.toLocaleString()}</p>
+        </div>
+        <div className="glass rounded-xl p-4">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-fg-muted mb-1">Conv. Rate</p>
+          <p className="text-mono text-2xl font-bold text-violet-400">
+            {totalClicks > 0 ? `${((totalInstalls / totalClicks) * 100).toFixed(1)}%` : "—"}
+          </p>
+        </div>
+      </div>
+
+      {/* Combined target progress bar */}
+      <div className="glass rounded-xl p-4 mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-medium text-fg-muted">Combined Target Progress</span>
+          <span className="text-mono text-xs text-fg-muted">{totalInstalls} / {totalTarget} installs</span>
+        </div>
+        <div className="h-4 rounded-full overflow-hidden bg-border">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, totalTarget > 0 ? (totalInstalls / totalTarget) * 100 : 0)}%` }}
+            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+            className="h-full rounded-full"
+            style={{ background: "linear-gradient(90deg, var(--emerald), #34d399)" }}
+          />
         </div>
       </div>
 
@@ -761,14 +793,15 @@ function MarchFEPDashboard() {
         </div>
       )}
 
-      {/* Faculty table with install data */}
+      {/* Faculty table with individual install bars */}
       <div className="glass rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-[40px_1fr_180px_100px_90px_100px] gap-2 px-5 py-3 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+        <div className="grid grid-cols-[32px_1fr_70px_70px_70px_1fr_50px] gap-2 px-5 py-3 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
           <span>#</span>
           <span>Faculty</span>
-          <span>Email</span>
-          <span className="text-center">Token</span>
+          <span className="text-center">Clicks</span>
           <span className="text-center">Installs</span>
+          <span className="text-center">Sessions</span>
+          <span>Target</span>
           <span className="text-center">Link</span>
         </div>
 
@@ -777,32 +810,49 @@ function MarchFEPDashboard() {
         ) : (
           faculty.map((f, i) => {
             const stats = f.adjustToken ? adjustMap.get(f.adjustToken) : null;
+            const installs = stats?.installs ?? 0;
+            const clicks = stats?.clicks ?? 0;
+            const sessions = stats?.sessions ?? 0;
+            const pct = Math.min(100, (installs / TARGET_INSTALLS) * 100);
             return (
-              <div key={f.userId} className="grid grid-cols-[40px_1fr_180px_100px_90px_100px] gap-2 px-5 py-3 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+              <div key={f.userId} className="grid grid-cols-[32px_1fr_70px_70px_70px_1fr_50px] gap-2 px-5 py-3 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
                 <span className="text-xs text-fg-muted text-mono">{i + 1}</span>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-fg truncate">{f.name}</p>
-                </div>
-                <span className="text-[11px] text-fg-muted truncate">{f.email}</span>
-                <div className="text-center">
-                  {f.adjustToken ? (
-                    <span className="text-mono text-[10px] px-1.5 py-0.5 rounded bg-bg-elev border border-border text-fg-muted">{f.adjustToken}</span>
-                  ) : <span className="text-[10px] text-fg-dim">—</span>}
+                  <p className="text-[10px] text-fg-muted truncate">{f.email}</p>
                 </div>
                 <div className="text-center">
-                  {adjustQ.isLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin text-fg-muted inline" />
-                  ) : (
-                    <span className={cn("text-mono text-sm font-bold", (stats?.installs ?? 0) > 0 ? "text-emerald-400" : "text-fg-muted")}>
-                      {stats?.installs ?? 0}
-                    </span>
-                  )}
+                  <span className={cn("text-mono text-xs font-semibold", clicks > 0 ? "text-blue-400" : "text-fg-muted")}>
+                    {clicks}
+                  </span>
+                </div>
+                <div className="text-center">
+                  <span className={cn("text-mono text-xs font-bold", installs > 0 ? "text-emerald-400" : "text-fg-muted")}>
+                    {installs}
+                  </span>
+                </div>
+                <div className="text-center">
+                  <span className={cn("text-mono text-xs font-semibold", sessions > 0 ? "text-amber-400" : "text-fg-muted")}>
+                    {sessions}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 rounded-full overflow-hidden bg-border">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.8, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                      className="h-full rounded-full"
+                      style={{ background: pct >= 80 ? "var(--emerald)" : pct >= 50 ? "var(--amber)" : "var(--fg-muted)" }}
+                    />
+                  </div>
+                  <span className="text-mono text-[10px] text-fg-muted w-8 text-right">{Math.round(pct)}%</span>
                 </div>
                 <div className="text-center">
                   {f.trackingLink ? (
                     <a href={f.trackingLink} target="_blank" rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300">
-                      <LinkIcon className="h-3 w-3" /> Open
+                      <LinkIcon className="h-3 w-3" />
                     </a>
                   ) : <span className="text-[10px] text-fg-dim">—</span>}
                 </div>

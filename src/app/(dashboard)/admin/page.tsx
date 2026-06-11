@@ -148,7 +148,7 @@ export default function AdminDashboard() {
                   <th className="text-left px-5 py-3 font-medium">Name</th>
                   <th className="text-left px-3 py-3 font-medium">Email</th>
                   <th className="text-left px-3 py-3 font-medium">Role</th>
-                  <th className="text-left px-3 py-3 font-medium">Vertical</th>
+                  <th className="text-left px-3 py-3 font-medium">Cohort</th>
                   <th className="text-left px-3 py-3 font-medium">Subject</th>
                   <th className="px-3 py-3" />
                 </tr>
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
                           {r.label}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-fg-muted text-xs">{(u.subjects ?? []).join(", ") || "—"}</td>
+                      <td className="px-3 py-2.5 text-fg-muted text-xs">{u.cohort ?? "—"}</td>
                       <td className="px-3 py-2.5 text-fg-muted text-xs">{u.teachingSubject ?? "—"}</td>
                       <td className="px-3 py-2.5">
                         <button
