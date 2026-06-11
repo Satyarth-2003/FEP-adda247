@@ -452,7 +452,6 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
     if (ratingFilter === "unrated") return v.status !== "manager_rated";
     return true;
   });
-  const [loadingStats, setLoadingStats] = useState<Record<string, boolean>>({});
 
   async function fetchStats(videoId: string) {
     if (stats[videoId] !== undefined) return;
