@@ -16,6 +16,8 @@ export interface User {
   teachingSubject?: string;     // what they actually teach (Maths, History, etc.)
   examTarget?: string;          // detailed exam target description
   cohort?: string;              // e.g. "June FEP", "March FEP"
+  adjustToken?: string;         // Adjust tracking token
+  trackingLink?: string;        // Full adjust tracking link
   passwordHash?: string;
   avatarUrl?: string;
   createdAt: string;

@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play } from "lucide-react";
+import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon } from "lucide-react";
 import { Leaderboard } from "@/components/Leaderboard";
 import { VideoDrawer } from "@/components/VideoDrawer";
 import { SubjectTabs } from "@/components/SubjectTabs";
@@ -44,7 +44,8 @@ export default function ManagerDashboard() {
   const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null);
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
   const [activeSubjectTab, setActiveSubjectTab] = useState("all");
-  const [view, setView] = useState<"roster" | "analytics">("roster");
+  const [view, setView] = useState<"roster" | "analytics" | "cohorts">("roster");
+  const [selectedCohort, setSelectedCohort] = useState<string>("June FEP");
 
   const meQ = useQuery({
     queryKey: ["me"],
@@ -134,6 +135,7 @@ export default function ManagerDashboard() {
               [
                 { id: "roster" as const, label: "Roster", icon: LayoutGrid },
                 { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
+                { id: "cohorts" as const, label: "Cohorts", icon: Users },
               ]
             ).map((v) => {
               const Icon = v.icon;
@@ -193,6 +195,16 @@ export default function ManagerDashboard() {
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           >
             <ProgramAnalytics subjects={subjects} />
+          </motion.div>
+        ) : view === "cohorts" ? (
+          <motion.div
+            key="cohorts"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <CohortView selectedCohort={selectedCohort} onCohortChange={setSelectedCohort} />
           </motion.div>
         ) : (
           <motion.div
@@ -589,6 +601,81 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string; onCohortChange: (c: string) => void }) {
+  const cohortQ = useQuery({
+    queryKey: ["cohorts", selectedCohort],
+    queryFn: async () => {
+      const res = await fetch(`/api/cohorts?cohort=${encodeURIComponent(selectedCohort)}`);
+      return res.json() as Promise<{ cohorts: string[]; faculty: { userId: string; name: string; email: string; cohort: string; adjustToken: string | null; trackingLink: string | null }[]; total: number }>;
+    },
+  });
+
+  const cohorts = cohortQ.data?.cohorts ?? ["March FEP", "June FEP"];
+  const faculty = cohortQ.data?.faculty ?? [];
+
+  return (
+    <div className="space-y-5">
+      {/* Cohort selector */}
+      <div className="flex items-center gap-2">
+        {cohorts.map(c => (
+          <button key={c} onClick={() => onCohortChange(c)}
+            className={cn(
+              "relative px-4 py-2 rounded-full text-xs font-medium transition-colors",
+              selectedCohort === c ? "text-white" : "text-fg-muted hover:text-fg border border-border"
+            )}>
+            {selectedCohort === c && <motion.span layoutId="cohort-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* Faculty list with tracking links */}
+      <div className="glass rounded-2xl overflow-hidden">
+        <div className="grid grid-cols-[40px_1fr_200px_120px_100px] gap-2 px-5 py-3 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+          <span>#</span>
+          <span>Faculty</span>
+          <span>Email</span>
+          <span className="text-center">Adjust Token</span>
+          <span className="text-center">Tracking Link</span>
+        </div>
+
+        {cohortQ.isLoading ? (
+          <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
+        ) : faculty.length === 0 ? (
+          <div className="py-8 text-center text-sm text-fg-muted">No faculty in this cohort</div>
+        ) : (
+          faculty.map((f, i) => (
+            <div key={f.userId} className="grid grid-cols-[40px_1fr_200px_120px_100px] gap-2 px-5 py-3 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+              <span className="text-xs text-fg-muted text-mono">{i + 1}</span>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-fg truncate">{f.name}</p>
+              </div>
+              <span className="text-xs text-fg-muted truncate">{f.email}</span>
+              <div className="text-center">
+                {f.adjustToken ? (
+                  <span className="text-mono text-[11px] px-2 py-0.5 rounded bg-bg-elev border border-border text-fg-muted">{f.adjustToken}</span>
+                ) : <span className="text-[10px] text-fg-dim">—</span>}
+              </div>
+              <div className="text-center">
+                {f.trackingLink ? (
+                  <a href={f.trackingLink} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <LinkIcon className="h-3 w-3" /> Link
+                  </a>
+                ) : <span className="text-[10px] text-fg-dim">—</span>}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <p className="text-[10px] text-fg-dim">
+        {faculty.length} faculty in {selectedCohort} · Tracking via Adjust
+      </p>
     </div>
   );
 }
