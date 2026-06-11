@@ -15,6 +15,7 @@ export interface User {
   subjects: string[];           // verticals (ssc, foundation, neet, etc.)
   teachingSubject?: string;     // what they actually teach (Maths, History, etc.)
   examTarget?: string;          // detailed exam target description
+  cohort?: string;              // e.g. "June FEP", "March FEP"
   passwordHash?: string;
   avatarUrl?: string;
   createdAt: string;
