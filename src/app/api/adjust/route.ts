@@ -17,65 +17,67 @@ export async function GET(req: Request) {
   }
 
   try {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    const datePeriod = `${start.toISOString().split("T")[0]}:${end.toISOString().split("T")[0]}`;
+
     const params = new URLSearchParams({
-      dimensions: "tracker",
-      metrics: "installs,clicks,impressions,sessions,reattributions,daus,waus,maus",
-      date_period: "-30d:-1d",
-      tracker_token__in: trackerTokens.join(","),
+      dimensions: "network",
+      metrics: "installs,clicks,impressions,sessions,reattributions",
+      date_period: datePeriod,
+    });
+    params.set("tracker_token__in", trackerTokens.join(","));
+
+    const apiUrl = `https://dash.adjust.com/control-center/reports-service/report?${params.toString()}`;
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        "Authorization": `Bearer ${ADJUST_API_TOKEN}`,
+        "Accept": "application/json",
+      },
     });
 
-    const res = await fetch(
-      `https://dash.adjust.com/control-center/reports-service/report?${params.toString()}`,
-      {
-        headers: {
-          "Authorization": `Bearer ${ADJUST_API_TOKEN}`,
-          "Accept": "application/json",
-        },
-      }
-    );
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("Adjust API error:", res.status, errText);
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Adjust API error:", response.status, errText);
       return NextResponse.json({
-        trackers: trackerTokens.map(t => ({ token: t, installs: 0, clicks: 0, impressions: 0, sessions: 0, reattributions: 0, daus: 0 })),
-        error: "Adjust API unavailable - showing placeholder data",
+        trackers: trackerTokens.map(t => ({ token: t, installs: 0, clicks: 0, sessions: 0, reattributions: 0 })),
+        networks: [],
+        totals: { installs: 0, clicks: 0, sessions: 0, reattributions: 0 },
+        error: `Adjust API error (${response.status})`,
       });
     }
 
-    const data = await res.json();
+    const data = await response.json();
     const rows = data.rows ?? [];
-    const trackerMap: Record<string, { installs: number; clicks: number; impressions: number; sessions: number; reattributions: number; daus: number }> = {};
-    
-    for (const row of rows) {
-      const token = row.tracker_token || row.tracker;
-      if (token) {
-        trackerMap[token] = {
-          installs: Number(row.installs || 0),
-          clicks: Number(row.clicks || 0),
-          impressions: Number(row.impressions || 0),
-          sessions: Number(row.sessions || 0),
-          reattributions: Number(row.reattributions || 0),
-          daus: Number(row.daus || 0),
-        };
-      }
-    }
+    const totals = data.totals ?? {};
+
+    // Return raw network-level data so frontend can match by email
+    const networks = rows.map((row: Record<string, unknown>) => ({
+      network: row.network as string,
+      installs: Number(row.installs || 0),
+      clicks: Number(row.clicks || 0),
+      impressions: Number(row.impressions || 0),
+      sessions: Number(row.sessions || 0),
+      reattributions: Number(row.reattributions || 0),
+    }));
 
     return NextResponse.json({
-      trackers: trackerTokens.map(t => ({
-        token: t,
-        installs: trackerMap[t]?.installs ?? 0,
-        clicks: trackerMap[t]?.clicks ?? 0,
-        impressions: trackerMap[t]?.impressions ?? 0,
-        sessions: trackerMap[t]?.sessions ?? 0,
-        reattributions: trackerMap[t]?.reattributions ?? 0,
-        daus: trackerMap[t]?.daus ?? 0,
-      })),
+      networks,
+      totals: {
+        installs: Number(totals.installs || 0),
+        clicks: Number(totals.clicks || 0),
+        impressions: Number(totals.impressions || 0),
+        sessions: Number(totals.sessions || 0),
+        reattributions: Number(totals.reattributions || 0),
+      },
     });
   } catch (err) {
     console.error("Adjust fetch error:", err);
     return NextResponse.json({
-      trackers: trackerTokens.map(t => ({ token: t, installs: 0, clicks: 0, impressions: 0, sessions: 0, reattributions: 0, daus: 0 })),
+      networks: [],
+      totals: { installs: 0, clicks: 0, sessions: 0, reattributions: 0 },
       error: "Failed to fetch from Adjust",
     });
   }

@@ -717,18 +717,27 @@ function MarchFEPDashboard() {
     queryFn: async () => {
       const faculty = cohortQ.data?.faculty ?? [];
       const tokens = faculty.filter(f => f.adjustToken).map(f => f.adjustToken!);
-      if (tokens.length === 0) return { trackers: [] };
+      if (tokens.length === 0) return { networks: [], totals: { installs: 0, clicks: 0, sessions: 0, reattributions: 0 } };
       const res = await fetch(`/api/adjust?trackers=${tokens.join(",")}`);
-      return res.json() as Promise<{ trackers: { token: string; installs: number; clicks: number; impressions: number; sessions: number; reattributions: number; daus: number }[]; error?: string }>;
+      return res.json() as Promise<{ networks: { network: string; installs: number; clicks: number; sessions: number; reattributions: number }[]; totals: { installs: number; clicks: number; sessions: number; reattributions: number }; error?: string }>;
     },
     enabled: !!cohortQ.data?.faculty?.length,
   });
 
   const faculty = cohortQ.data?.faculty ?? [];
-  const adjustMap = new Map((adjustQ.data?.trackers ?? []).map(t => [t.token, t]));
-  const totalInstalls = (adjustQ.data?.trackers ?? []).reduce((sum, t) => sum + t.installs, 0);
-  const totalClicks = (adjustQ.data?.trackers ?? []).reduce((sum, t) => sum + t.clicks, 0);
-  const totalSessions = (adjustQ.data?.trackers ?? []).reduce((sum, t) => sum + t.sessions, 0);
+  const totals = adjustQ.data?.totals ?? { installs: 0, clicks: 0, sessions: 0, reattributions: 0 };
+  const networks = adjustQ.data?.networks ?? [];
+
+  // Match network names (like "teacher_refer_fac_FEP_ankitas.selakoti") to faculty by email prefix
+  function getFacultyStats(email: string) {
+    const prefix = email.split("@")[0].toLowerCase();
+    const match = networks.find(n => n.network.toLowerCase().includes(prefix));
+    return match ?? { installs: 0, clicks: 0, sessions: 0, reattributions: 0 };
+  }
+
+  const totalInstalls = totals.installs;
+  const totalClicks = totals.clicks;
+  const totalSessions = totals.sessions;
   const totalTarget = faculty.filter(f => f.adjustToken).length * TARGET_INSTALLS;
 
   return (
@@ -809,10 +818,10 @@ function MarchFEPDashboard() {
           <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
         ) : (
           faculty.map((f, i) => {
-            const stats = f.adjustToken ? adjustMap.get(f.adjustToken) : null;
-            const installs = stats?.installs ?? 0;
-            const clicks = stats?.clicks ?? 0;
-            const sessions = stats?.sessions ?? 0;
+            const stats = getFacultyStats(f.email);
+            const installs = stats.installs;
+            const clicks = stats.clicks;
+            const sessions = stats.sessions;
             const pct = Math.min(100, (installs / TARGET_INSTALLS) * 100);
             return (
               <div key={f.userId} className="grid grid-cols-[32px_1fr_70px_70px_70px_1fr_50px] gap-2 px-5 py-3 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
