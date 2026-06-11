@@ -143,8 +143,8 @@ const FACULTY: FacultySeed[] = [
 ];
 
 const MANAGERS = [
-  { name: "Roshan Singh", email: "roshan@fep.local" },
-  { name: "Ayush Chauhan", email: "ayush@fep.local" },
+  { name: "Roshan Singh", email: "roshan.singh@adda247.com" },
+  { name: "Ayush Chauhan", email: "ayush.chauhan@adda247.com" },
 ];
 
 async function emailExists(email: string): Promise<boolean> {

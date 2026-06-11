@@ -111,10 +111,7 @@ export default function LeaderboardPage() {
       .sort((a, b) => b.views - a.views);
   }, [rows, ytData]);
 
-  const bySubs = useMemo(() => [...byViews].sort((a, b) => b.subs - a.subs), [byViews]);
-
   const bottomViews = useMemo(() => [...byViews].filter(f => f.views > 0).sort((a, b) => a.views - b.views).slice(0, Math.max(2, Math.ceil(byViews.length * 0.2))), [byViews]);
-  const bottomSubs = useMemo(() => [...bySubs].filter(f => f.subs > 0).sort((a, b) => a.subs - b.subs).slice(0, Math.max(2, Math.ceil(bySubs.length * 0.2))), [bySubs]);
 
   if (dataQ.isLoading) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-fg-muted" /></div>;
@@ -145,29 +142,45 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
-      {/* Three-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Column 1: Total Views */}
-        <RankingCard
-          title="Total Views"
-          color="#ef4444"
-          badge={`${byViews.filter(f => f.views > 0).length} faculty`}
-          rows={byViews.filter(f => f.views > 0).slice(0, 10)}
-          valueFormatter={(f) => f.views.toLocaleString("en-IN")}
-          loading={loadingYt}
-        />
+      {/* Two-column layout: Top Performers & Bottom Performers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Column 1: Top Performers */}
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <h3 className="text-sm font-semibold">Top Performers</h3>
+            </div>
+            <span className="text-[10px] rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 px-2 py-0.5">
+              {byViews.filter(f => f.views > 0).length} faculty
+            </span>
+          </div>
+          {loadingYt ? (
+            <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
+          ) : (
+            <div className="space-y-1">
+              {byViews.filter(f => f.views > 0).slice(0, 10).map((f, i) => (
+                <motion.div key={f.facultyId}
+                  initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-2 hover:bg-bg-elev/60 transition-colors"
+                >
+                  <span className={cn(
+                    "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono",
+                    i === 0 ? "bg-amber-500/15 text-amber-500 border border-amber-500/30" :
+                    i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
+                  )}>{i + 1}</span>
+                  <ColorAvatar name={f.name} />
+                  <span className="flex-1 text-xs font-medium text-fg/90 truncate">{f.name}</span>
+                  <span className="text-mono text-sm font-bold text-emerald-400">{f.views.toLocaleString("en-IN")}</span>
+                </motion.div>
+              ))}
+              {byViews.filter(f => f.views > 0).length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
+            </div>
+          )}
+        </div>
 
-        {/* Column 2: Subs Gained (likes as proxy) */}
-        <RankingCard
-          title="Subs Gained"
-          color="#10b981"
-          badge={`${bySubs.filter(f => f.subs > 0).length} faculty`}
-          rows={bySubs.filter(f => f.subs > 0).slice(0, 10)}
-          valueFormatter={(f) => `+${f.subs.toLocaleString("en-IN")}`}
-          loading={loadingYt}
-        />
-
-        {/* Column 3: Bottom Performers */}
+        {/* Column 2: Bottom Performers */}
         <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -176,52 +189,25 @@ export default function LeaderboardPage() {
             </div>
             <span className="text-[10px] rounded-full border border-rose-500/25 bg-rose-500/10 text-rose-500 px-2 py-0.5">Bottom 20%</span>
           </div>
-
           {loadingYt ? (
             <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
           ) : (
-            <div className="space-y-4">
-              {/* Bottom views */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                  <span className="text-[10px] uppercase tracking-wider text-fg-muted font-medium">Total Views</span>
-                  <span className="ml-auto text-[10px] text-fg-muted">{bottomViews.length} faculty</span>
-                </div>
-                <div className="space-y-1">
-                  {bottomViews.map((f, i) => (
-                    <div key={f.facultyId} className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-1.5">
-                      <span className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold text-mono bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                        {byViews.length - bottomViews.length + i + 1}
-                      </span>
-                      <ColorAvatar name={f.name} />
-                      <span className="flex-1 text-xs text-fg/90 truncate">{f.name}</span>
-                      <span className="text-mono text-xs font-semibold text-rose-500">{f.views.toLocaleString("en-IN")}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bottom subs */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] uppercase tracking-wider text-fg-muted font-medium">Subs Gained</span>
-                  <span className="ml-auto text-[10px] text-fg-muted">{bottomSubs.length} faculty</span>
-                </div>
-                <div className="space-y-1">
-                  {bottomSubs.map((f, i) => (
-                    <div key={f.facultyId + "-s"} className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-1.5">
-                      <span className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold text-mono bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                        {bySubs.length - bottomSubs.length + i + 1}
-                      </span>
-                      <ColorAvatar name={f.name} />
-                      <span className="flex-1 text-xs text-fg/90 truncate">{f.name}</span>
-                      <span className="text-mono text-xs font-semibold text-rose-500">+{f.subs.toLocaleString("en-IN")}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="space-y-1">
+              {bottomViews.map((f, i) => (
+                <motion.div key={f.facultyId}
+                  initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-bg-elev/30 px-2.5 py-2 hover:bg-bg-elev/60 transition-colors"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                    {byViews.length - bottomViews.length + i + 1}
+                  </span>
+                  <ColorAvatar name={f.name} />
+                  <span className="flex-1 text-xs font-medium text-fg/90 truncate">{f.name}</span>
+                  <span className="text-mono text-sm font-bold text-rose-500">{f.views.toLocaleString("en-IN")}</span>
+                </motion.div>
+              ))}
+              {bottomViews.length === 0 && <p className="text-xs text-fg-muted text-center py-4">No data yet</p>}
             </div>
           )}
         </div>
