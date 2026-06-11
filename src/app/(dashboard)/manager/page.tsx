@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon } from "lucide-react";
+import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon, Eye, ThumbsUp, MessageSquare } from "lucide-react";
 import { Leaderboard } from "@/components/Leaderboard";
 import { VideoDrawer } from "@/components/VideoDrawer";
 import { SubjectTabs } from "@/components/SubjectTabs";
@@ -347,6 +347,9 @@ export default function ManagerDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* Net YouTube stats for this faculty */}
+              <FacultyYTStats videos={filteredVideos} />
 
               <div className="border-b border-border pb-2">
                 <SubjectTabs
@@ -807,6 +810,66 @@ function MarchFEPDashboard() {
             );
           })
         )}
+      </div>
+    </div>
+  );
+}
+
+function FacultyYTStats({ videos }: { videos: (Video & { analysis?: GradiAnalysis | null })[] }) {
+  const [stats, setStats] = useState<{ views: number; likes: number; comments: number } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (videos.length === 0) { setStats(null); return; }
+    setLoading(true);
+    let views = 0, likes = 0, comments = 0;
+    (async () => {
+      for (const v of videos.slice(0, 20)) {
+        try {
+          const res = await fetch(`/api/videos/${v.videoId}/youtube-stats`);
+          if (res.ok) {
+            const d = await res.json();
+            views += d.views || 0;
+            likes += d.likes || 0;
+            comments += d.comments || 0;
+          }
+        } catch { /* skip */ }
+      }
+      setStats({ views, likes, comments });
+      setLoading(false);
+    })();
+  }, [videos]);
+
+  if (videos.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
+        <Eye className="h-4 w-4 text-fg-muted" />
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-fg-muted">Total Views</p>
+          <p className="text-mono text-lg font-bold text-fg">
+            {loading ? "..." : stats ? stats.views.toLocaleString() : "—"}
+          </p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
+        <ThumbsUp className="h-4 w-4 text-fg-muted" />
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-fg-muted">Total Likes</p>
+          <p className="text-mono text-lg font-bold text-fg">
+            {loading ? "..." : stats ? stats.likes.toLocaleString() : "—"}
+          </p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
+        <MessageSquare className="h-4 w-4 text-fg-muted" />
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-fg-muted">Total Comments</p>
+          <p className="text-mono text-lg font-bold text-fg">
+            {loading ? "..." : stats ? stats.comments.toLocaleString() : "—"}
+          </p>
+        </div>
       </div>
     </div>
   );
