@@ -884,6 +884,84 @@ function MarchFEPDashboard() {
           })
         )}
       </div>
+
+      {/* Video Management Section for March Cohort */}
+      <MarchVideoSection faculty={faculty} />
+    </div>
+  );
+}
+
+function MarchVideoSection({ faculty }: { faculty: { userId: string; name: string; email: string; adjustToken: string | null; trackingLink: string | null }[] }) {
+  const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null);
+  const [openVideoId, setOpenVideoId] = useState<string | null>(null);
+
+  const meQ = useQuery({
+    queryKey: ["me"],
+    queryFn: async (): Promise<{ user: JWTPayload | null }> => (await fetch("/api/auth/me")).json(),
+  });
+
+  const videosQ = useQuery({
+    queryKey: ["march-videos", selectedFaculty],
+    queryFn: async () => {
+      const res = await fetch(`/api/videos?facultyId=${selectedFaculty}`);
+      return res.json() as Promise<{ videos: Video[] }>;
+    },
+    enabled: !!selectedFaculty,
+  });
+
+  const subjectsQ = useQuery({
+    queryKey: ["subjects"],
+    queryFn: async (): Promise<{ subjects: Subject[] }> => (await fetch("/api/subjects")).json(),
+  });
+
+  const videos = videosQ.data?.videos ?? [];
+  const subjects = subjectsQ.data?.subjects ?? [];
+  const selectedName = faculty.find(f => f.userId === selectedFaculty)?.name ?? "";
+
+  return (
+    <div className="mt-8 space-y-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold tracking-tight">Video Management</h2>
+        {selectedFaculty && (
+          <VideoUploader subjects={subjects} onSuccess={() => videosQ.refetch()} managerMode facultyList={faculty.map(f => ({ userId: f.userId, name: f.name }))} />
+        )}
+      </div>
+
+      {/* Faculty selector */}
+      <div className="flex items-center gap-3">
+        <select
+          value={selectedFaculty ?? ""}
+          onChange={e => setSelectedFaculty(e.target.value || null)}
+          className="rounded-full border border-border bg-bg-elev/60 px-4 py-2 text-sm outline-none focus:border-fg/30 min-w-[200px]"
+        >
+          <option value="">Select faculty...</option>
+          {faculty.map(f => <option key={f.userId} value={f.userId}>{f.name}</option>)}
+        </select>
+        {selectedName && <span className="text-xs text-fg-muted">Showing videos for {selectedName}</span>}
+      </div>
+
+      {/* Videos table */}
+      {selectedFaculty && (
+        <>
+          {videosQ.isLoading ? (
+            <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
+          ) : videos.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-bg-elev/30 py-12 text-center text-sm text-fg-muted">
+              No videos uploaded yet for {selectedName}
+            </div>
+          ) : (
+            <VideoTable videos={videos.map(v => ({ ...v, analysis: null }))} onSelect={id => setOpenVideoId(id)} />
+          )}
+        </>
+      )}
+
+      <VideoDrawer
+        videoId={openVideoId}
+        onClose={() => setOpenVideoId(null)}
+        managerMode
+        managerId={meQ.data?.user?.userId}
+        onRated={() => videosQ.refetch()}
+      />
     </div>
   );
 }
