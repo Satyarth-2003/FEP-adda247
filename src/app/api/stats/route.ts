@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   }
 
   if (searchParams.get("scope") === "all" && (user.role === "fep_manager" || user.role === "fep_admin")) {
-    return aggregateAll();
+    return aggregateAll(searchParams.get("cohort") ?? "June FEP");
   }
 
   const videosRes = await ddb.send(
@@ -93,14 +93,14 @@ export async function GET(req: Request) {
   });
 }
 
-async function aggregateAll() {
+async function aggregateAll(cohort: string = "June FEP") {
   const [usersRes, videosRes, analysesRes, ratingsRes] = await Promise.all([
     ddb.send(
       new ScanCommand({
         TableName: TABLES.USERS,
-        FilterExpression: "#r = :r",
+        FilterExpression: "#r = :r AND cohort = :c",
         ExpressionAttributeNames: { "#r": "role" },
-        ExpressionAttributeValues: { ":r": "fep_faculty" },
+        ExpressionAttributeValues: { ":r": "fep_faculty", ":c": cohort },
       })
     ),
     ddb.send(new ScanCommand({ TableName: TABLES.VIDEOS })),

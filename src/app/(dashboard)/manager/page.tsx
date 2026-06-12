@@ -73,9 +73,9 @@ export default function ManagerDashboard() {
   });
 
   const aggQ = useQuery({
-    queryKey: ["aggregate"],
+    queryKey: ["aggregate", activeCohort],
     queryFn: async (): Promise<AggregateStats> =>
-      (await fetch("/api/stats?scope=all")).json(),
+      (await fetch(`/api/stats?scope=all&cohort=${encodeURIComponent(activeCohort)}`)).json(),
     refetchInterval: 8000,
   });
 
@@ -165,7 +165,7 @@ export default function ManagerDashboard() {
                   onClick={() => setView(v.id)}
                   className={cn(
                     "relative flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors isolate",
-                    active ? "text-white dark:text-black" : "text-fg-muted hover:text-fg"
+                    active ? "text-white dark:text-neutral-900" : "text-fg-muted hover:text-fg"
                   )}
                 >
                   {active && (
@@ -227,7 +227,7 @@ export default function ManagerDashboard() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           >
-            <JuneRatingQueue openVideoId={openVideoId} setOpenVideoId={setOpenVideoId} managerId={meQ.data?.user?.userId} onRated={() => aggQ.refetch()} />
+            <JuneRatingQueue openVideoId={openVideoId} setOpenVideoId={setOpenVideoId} managerId={meQ.data?.user?.userId} onRated={() => aggQ.refetch()} cohort={activeCohort} />
           </motion.div>
         ) : (
           <motion.div
@@ -494,7 +494,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
         {(["all", "unrated", "rated"] as const).map(f => (
           <button key={f} onClick={() => setRatingFilter(f)}
             className={cn("px-3 py-1 rounded-full text-[11px] font-medium transition-colors",
-              ratingFilter === f ? "bg-fg text-white dark:text-black" : "text-fg-muted border border-border hover:text-fg")}>
+              ratingFilter === f ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900" : "text-fg-muted border border-border hover:text-fg")}>
             {f === "all" ? `All (${videos.length})` : f === "unrated" ? `Unrated (${videos.filter(v => v.status !== "manager_rated").length})` : `Rated (${videos.filter(v => v.status === "manager_rated").length})`}
           </button>
         ))}
@@ -651,16 +651,27 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
   );
 }
 
-function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated }: { openVideoId: string | null; setOpenVideoId: (id: string | null) => void; managerId?: string; onRated: () => void }) {
+function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, cohort }: { openVideoId: string | null; setOpenVideoId: (id: string | null) => void; managerId?: string; onRated: () => void; cohort?: string }) {
   const [ratingFilter, setRatingFilter] = useState<"unrated" | "rated" | "all">("unrated");
 
+  // Fetch cohort faculty to filter videos
+  const cohortQ = useQuery({
+    queryKey: ["cohorts-ids", cohort],
+    queryFn: async () => {
+      const res = await fetch(`/api/cohorts?cohort=${encodeURIComponent(cohort ?? "June FEP")}`);
+      return res.json() as Promise<{ faculty: { userId: string }[] }>;
+    },
+  });
+
+  const cohortFacultyIds = new Set((cohortQ.data?.faculty ?? []).map(f => f.userId));
+
   const allVideosQ = useQuery({
-    queryKey: ["all-videos-june"],
+    queryKey: ["all-videos-june", cohort],
     queryFn: async () => { const res = await fetch("/api/videos"); return res.json() as Promise<{ videos: Video[] }>; },
     refetchInterval: 10000,
   });
 
-  const allVideos = allVideosQ.data?.videos ?? [];
+  const allVideos = (allVideosQ.data?.videos ?? []).filter(v => cohortFacultyIds.size === 0 || cohortFacultyIds.has(v.facultyId));
   const filtered = allVideos.filter(v => {
     if (ratingFilter === "unrated") return v.status !== "manager_rated";
     if (ratingFilter === "rated") return v.status === "manager_rated";
@@ -678,13 +689,13 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated }: { 
         {(["unrated", "rated", "all"] as const).map(f => (
           <button key={f} onClick={() => setRatingFilter(f)}
             className={cn("px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors",
-              ratingFilter === f ? "bg-fg text-white dark:text-black" : "text-fg-muted border border-border hover:text-fg")}>
+              ratingFilter === f ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900" : "text-fg-muted border border-border hover:text-fg")}>
             {f === "unrated" ? `Unrated (${allVideos.filter(v => v.status !== "manager_rated").length})` : f === "rated" ? `Rated (${allVideos.filter(v => v.status === "manager_rated").length})` : `All (${allVideos.length})`}
           </button>
         ))}
       </div>
 
-      {allVideosQ.isLoading ? (
+      {(allVideosQ.isLoading || cohortQ.isLoading) ? (
         <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-bg-elev/30 py-12 text-center text-sm text-fg-muted">
@@ -721,7 +732,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated }: { 
               </div>
               <div className="text-center">
                 <button onClick={() => setOpenVideoId(v.videoId)}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-fg text-white dark:text-black hover:opacity-80 transition-opacity">
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 hover:opacity-80 transition-opacity">
                   Rate
                 </button>
               </div>
@@ -755,9 +766,9 @@ function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string
           <button key={c} onClick={() => onCohortChange(c)}
             className={cn(
               "relative px-4 py-2 rounded-full text-xs font-medium transition-colors isolate",
-              selectedCohort === c ? "text-white" : "text-fg-muted hover:text-fg border border-border"
+              selectedCohort === c ? "text-white dark:text-neutral-900" : "text-fg-muted hover:text-fg border border-border"
             )}>
-            {selectedCohort === c && <motion.span layoutId="cohort-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
+            {selectedCohort === c && <motion.span layoutId="cohort-pill" className="absolute inset-0 rounded-full bg-neutral-900 dark:bg-neutral-100 -z-10" transition={{ duration: 0.2 }} />}
             {c}
           </button>
         ))}
@@ -869,8 +880,8 @@ function MarchFEPDashboard() {
         {(["installs", "rating"] as const).map(v => (
           <button key={v} onClick={() => setMarchView(v)}
             className={cn("px-4 py-2 rounded-full text-xs font-medium transition-colors isolate relative",
-              marchView === v ? "text-white" : "text-fg-muted hover:text-fg border border-border")}>
-            {marchView === v && <motion.span layoutId="march-view-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
+              marchView === v ? "text-white dark:text-neutral-900" : "text-fg-muted hover:text-fg border border-border")}>
+            {marchView === v && <motion.span layoutId="march-view-pill" className="absolute inset-0 rounded-full bg-neutral-900 dark:bg-neutral-100 -z-10" transition={{ duration: 0.2 }} />}
             {v === "installs" ? "Install Tracking" : "Rating Queue"}
           </button>
         ))}
@@ -1002,7 +1013,7 @@ function MarchRatingQueue({ faculty, openVideoId, setOpenVideoId }: { faculty: {
         {(["unrated", "rated", "all"] as const).map(f => (
           <button key={f} onClick={() => setRatingFilter(f)}
             className={cn("px-3 py-1 rounded-full text-[11px] font-medium transition-colors",
-              ratingFilter === f ? "bg-fg text-white dark:text-black" : "text-fg-muted border border-border hover:text-fg")}>
+              ratingFilter === f ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900" : "text-fg-muted border border-border hover:text-fg")}>
             {f === "unrated" ? `Unrated (${marchVideos.filter(v => v.status !== "manager_rated").length})` : f === "rated" ? `Rated (${marchVideos.filter(v => v.status === "manager_rated").length})` : `All (${marchVideos.length})`}
           </button>
         ))}
@@ -1045,7 +1056,7 @@ function MarchRatingQueue({ faculty, openVideoId, setOpenVideoId }: { faculty: {
               </div>
               <div className="text-center">
                 <button onClick={() => setOpenVideoId(v.videoId)}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-fg text-white dark:text-black hover:opacity-80 transition-opacity">
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 hover:opacity-80 transition-opacity">
                   Rate
                 </button>
               </div>

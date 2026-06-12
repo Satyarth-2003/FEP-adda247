@@ -190,10 +190,10 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated 
                         <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
                           <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 16 }}>Combined Score</p>
                           <div className="flex items-center gap-6">
-                            <ScoreRing score={combinedTotal} max={50} size={108} stroke={8} label="/ 50" />
+                            <ScoreRing key={`ring-${videoId}`} score={combinedTotal} max={50} size={108} stroke={8} label="/ 50" />
                             <div className="flex-1 space-y-3">
-                              <ScoreHalf label="Manager Score" value={managerTotal} max={25} isEmpty={!managerMode && !displayedRating} emptyLabel="Not yet rated" />
-                              <ScoreHalf label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
+                              <ScoreHalf key={"mgr-" + videoId} label="Manager Score" value={managerTotal} max={25} isEmpty={!managerMode && !displayedRating} emptyLabel="Not yet rated" />
+                              <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
                             </div>
                           </div>
                         </div>
