@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon, Eye, ThumbsUp, MessageSquare } from "lucide-react";
+import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon, Eye, ThumbsUp, MessageSquare, ClipboardList } from "lucide-react";
 import { Leaderboard } from "@/components/Leaderboard";
 import { VideoDrawer } from "@/components/VideoDrawer";
 import { SubjectTabs } from "@/components/SubjectTabs";
@@ -44,7 +44,7 @@ export default function ManagerDashboard() {
   const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null);
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
   const [activeSubjectTab, setActiveSubjectTab] = useState("all");
-  const [view, setView] = useState<"roster" | "analytics" | "cohorts">("roster");
+  const [view, setView] = useState<"roster" | "analytics" | "cohorts" | "rating">("roster");
   const [selectedCohort, setSelectedCohort] = useState<string>("June FEP");
   const [activeCohort, setActiveCohort] = useState<string>("June FEP");
 
@@ -152,6 +152,7 @@ export default function ManagerDashboard() {
             {(
               [
                 { id: "roster" as const, label: "Roster", icon: LayoutGrid },
+                { id: "rating" as const, label: "Rating Queue", icon: ClipboardList },
                 { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
                 { id: "cohorts" as const, label: "Cohorts", icon: Users },
               ]
@@ -217,6 +218,16 @@ export default function ManagerDashboard() {
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           >
             <CohortView selectedCohort={selectedCohort} onCohortChange={setSelectedCohort} />
+          </motion.div>
+        ) : view === "rating" ? (
+          <motion.div
+            key="rating"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <JuneRatingQueue openVideoId={openVideoId} setOpenVideoId={setOpenVideoId} managerId={meQ.data?.user?.userId} onRated={() => aggQ.refetch()} />
           </motion.div>
         ) : (
           <motion.div
@@ -640,6 +651,90 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
   );
 }
 
+function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated }: { openVideoId: string | null; setOpenVideoId: (id: string | null) => void; managerId?: string; onRated: () => void }) {
+  const [ratingFilter, setRatingFilter] = useState<"unrated" | "rated" | "all">("unrated");
+
+  const allVideosQ = useQuery({
+    queryKey: ["all-videos-june"],
+    queryFn: async () => { const res = await fetch("/api/videos"); return res.json() as Promise<{ videos: Video[] }>; },
+    refetchInterval: 10000,
+  });
+
+  const allVideos = allVideosQ.data?.videos ?? [];
+  const filtered = allVideos.filter(v => {
+    if (ratingFilter === "unrated") return v.status !== "manager_rated";
+    if (ratingFilter === "rated") return v.status === "manager_rated";
+    return true;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Rating Queue</h2>
+        <span className="text-xs text-fg-muted">{allVideos.filter(v => v.status !== "manager_rated").length} videos need rating</span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {(["unrated", "rated", "all"] as const).map(f => (
+          <button key={f} onClick={() => setRatingFilter(f)}
+            className={cn("px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors",
+              ratingFilter === f ? "bg-fg text-white dark:text-black" : "text-fg-muted border border-border hover:text-fg")}>
+            {f === "unrated" ? `Unrated (${allVideos.filter(v => v.status !== "manager_rated").length})` : f === "rated" ? `Rated (${allVideos.filter(v => v.status === "manager_rated").length})` : `All (${allVideos.length})`}
+          </button>
+        ))}
+      </div>
+
+      {allVideosQ.isLoading ? (
+        <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-bg-elev/30 py-12 text-center text-sm text-fg-muted">
+          {ratingFilter === "unrated" ? "All videos rated! 🎉" : "No videos found"}
+        </div>
+      ) : (
+        <div className="glass rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-[44px_1fr_120px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+            <span></span>
+            <span>Video</span>
+            <span>Faculty</span>
+            <span className="text-center">Status</span>
+            <span className="text-center">Rate</span>
+          </div>
+          {filtered.map(v => (
+            <div key={v.videoId} className="grid grid-cols-[44px_1fr_120px_70px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+              <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
+                {v.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                ) : <div className="w-full h-full flex items-center justify-center text-fg-dim"><Play className="h-3 w-3" /></div>}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-fg truncate">{v.title}</p>
+                <p className="text-[10px] text-fg-muted">{v.subject} · {new Date(v.uploadedAt).toLocaleDateString()}</p>
+              </div>
+              <span className="text-[11px] text-fg-muted truncate">{v.facultyName ?? "—"}</span>
+              <div className="text-center">
+                <span className={cn("inline-block px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium",
+                  v.status === "manager_rated" ? "bg-emerald-500/10 text-emerald-400" :
+                  v.status === "gradi_done" ? "bg-blue-500/10 text-blue-400" :
+                  "bg-amber-500/10 text-amber-400"
+                )}>{v.status === "manager_rated" ? "done" : v.status === "gradi_done" ? "gradi" : v.status}</span>
+              </div>
+              <div className="text-center">
+                <button onClick={() => setOpenVideoId(v.videoId)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-fg text-white dark:text-black hover:opacity-80 transition-opacity">
+                  Rate
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <VideoDrawer videoId={openVideoId} onClose={() => setOpenVideoId(null)} managerMode managerId={managerId} onRated={() => { onRated(); allVideosQ.refetch(); }} />
+    </div>
+  );
+}
+
 function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string; onCohortChange: (c: string) => void }) {
   const cohortQ = useQuery({
     queryKey: ["cohorts", selectedCohort],
@@ -717,6 +812,8 @@ function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string
 
 function MarchFEPDashboard() {
   const TARGET_INSTALLS = 100; // Target per faculty member
+  const [marchView, setMarchView] = useState<"installs" | "rating">("installs");
+  const [openVideoId, setOpenVideoId] = useState<string | null>(null);
 
   const cohortQ = useQuery({
     queryKey: ["cohorts", "March FEP"],
@@ -766,6 +863,23 @@ function MarchFEPDashboard() {
         <h1 className="text-xl md:text-2xl font-semibold tracking-tight">App Install Tracking</h1>
         <p className="text-sm text-fg-muted mt-1">Adjust-powered install attribution for March FEP faculty</p>
       </motion.div>
+
+      {/* View toggle: Installs vs Rating Queue */}
+      <div className="flex items-center gap-2 mb-6">
+        {(["installs", "rating"] as const).map(v => (
+          <button key={v} onClick={() => setMarchView(v)}
+            className={cn("px-4 py-2 rounded-full text-xs font-medium transition-colors isolate relative",
+              marchView === v ? "text-white" : "text-fg-muted hover:text-fg border border-border")}>
+            {marchView === v && <motion.span layoutId="march-view-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
+            {v === "installs" ? "Install Tracking" : "Rating Queue"}
+          </button>
+        ))}
+      </div>
+
+      {marchView === "rating" ? (
+        <MarchRatingQueue faculty={faculty} openVideoId={openVideoId} setOpenVideoId={setOpenVideoId} />
+      ) : (
+      <>
 
       {/* Stats tiles */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -852,6 +966,93 @@ function MarchFEPDashboard() {
           })
         )}
       </div>
+      </>
+      )}
+
+      <VideoDrawer videoId={openVideoId} onClose={() => setOpenVideoId(null)} managerMode managerId={undefined} onRated={() => {}} />
+    </div>
+  );
+}
+
+function MarchRatingQueue({ faculty, openVideoId, setOpenVideoId }: { faculty: { userId: string; name: string; email: string; adjustToken: string | null; trackingLink: string | null }[]; openVideoId: string | null; setOpenVideoId: (id: string | null) => void }) {
+  const [ratingFilter, setRatingFilter] = useState<"unrated" | "rated" | "all">("unrated");
+
+  // Fetch ALL videos for all March faculty
+  const allVideosQ = useQuery({
+    queryKey: ["march-all-videos"],
+    queryFn: async () => {
+      const res = await fetch("/api/videos");
+      return res.json() as Promise<{ videos: Video[] }>;
+    },
+  });
+
+  const allVideos = allVideosQ.data?.videos ?? [];
+  const marchFacultyIds = new Set(faculty.map(f => f.userId));
+  const marchVideos = allVideos.filter(v => marchFacultyIds.has(v.facultyId));
+
+  const filtered = marchVideos.filter(v => {
+    if (ratingFilter === "unrated") return v.status !== "manager_rated";
+    if (ratingFilter === "rated") return v.status === "manager_rated";
+    return true;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        {(["unrated", "rated", "all"] as const).map(f => (
+          <button key={f} onClick={() => setRatingFilter(f)}
+            className={cn("px-3 py-1 rounded-full text-[11px] font-medium transition-colors",
+              ratingFilter === f ? "bg-fg text-white dark:text-black" : "text-fg-muted border border-border hover:text-fg")}>
+            {f === "unrated" ? `Unrated (${marchVideos.filter(v => v.status !== "manager_rated").length})` : f === "rated" ? `Rated (${marchVideos.filter(v => v.status === "manager_rated").length})` : `All (${marchVideos.length})`}
+          </button>
+        ))}
+      </div>
+
+      {allVideosQ.isLoading ? (
+        <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-bg-elev/30 py-12 text-center text-sm text-fg-muted">
+          {ratingFilter === "unrated" ? "All videos have been rated! 🎉" : "No videos found"}
+        </div>
+      ) : (
+        <div className="glass rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-[44px_1fr_100px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+            <span></span>
+            <span>Video</span>
+            <span>Faculty</span>
+            <span className="text-center">Status</span>
+            <span className="text-center">Rate</span>
+          </div>
+          {filtered.map(v => (
+            <div key={v.videoId} className="grid grid-cols-[44px_1fr_100px_70px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+              <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
+                {v.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                ) : <div className="w-full h-full flex items-center justify-center text-fg-dim"><Play className="h-3 w-3" /></div>}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-fg truncate">{v.title}</p>
+                <p className="text-[10px] text-fg-muted">{new Date(v.uploadedAt).toLocaleDateString()}</p>
+              </div>
+              <span className="text-[11px] text-fg-muted truncate">{v.facultyName ?? "—"}</span>
+              <div className="text-center">
+                <span className={cn("inline-block px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium",
+                  v.status === "manager_rated" ? "bg-emerald-500/10 text-emerald-400" :
+                  v.status === "gradi_done" ? "bg-blue-500/10 text-blue-400" :
+                  "bg-amber-500/10 text-amber-400"
+                )}>{v.status === "manager_rated" ? "done" : v.status === "gradi_done" ? "gradi" : v.status}</span>
+              </div>
+              <div className="text-center">
+                <button onClick={() => setOpenVideoId(v.videoId)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-fg text-white dark:text-black hover:opacity-80 transition-opacity">
+                  Rate
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
