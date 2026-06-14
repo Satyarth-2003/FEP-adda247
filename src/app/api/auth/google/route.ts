@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     const user = result.Items?.[0] as User | undefined;
     if (!user) {
       return NextResponse.json(
-        { error: "Access denied. Your email is not registered in the FEP system. Contact your program manager." },
+        { error: "Access denied. Your email is not registered in the EduSkill system. Contact your program manager." },
         { status: 403 }
       );
     }

@@ -54,12 +54,12 @@ export default function ManagerDashboard() {
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
   const [activeSubjectTab, setActiveSubjectTab] = useState("all");
   const [view, setView] = useState<"roster" | "analytics" | "cohorts" | "rating">("roster");
-  const [selectedCohort, setSelectedCohort] = useState<string>("June FEP");
-  const [activeCohort, setActiveCohort] = useState<string>("June FEP");
+  const [selectedCohort, setSelectedCohort] = useState<string>("June EduSkill");
+  const [activeCohort, setActiveCohort] = useState<string>("June EduSkill");
 
   // Listen for cohort changes from TopNav
   useEffect(() => {
-    const saved = localStorage.getItem("selectedCohort") || "June FEP";
+    const saved = localStorage.getItem("selectedCohort") || "June EduSkill";
     setActiveCohort(saved);
     function handleCohortChange(e: Event) {
       const c = (e as CustomEvent).detail;
@@ -139,9 +139,9 @@ export default function ManagerDashboard() {
     [aggQ.data, selectedFaculty]
   );
 
-  // If March FEP is selected, show the March cohort dashboard
-  if (activeCohort === "March FEP") {
-    return <MarchFEPDashboard />;
+  // If March EduSkill is selected, show the March cohort dashboard
+  if (activeCohort === "March EduSkill") {
+    return <MarchEduSkillDashboard />;
   }
 
   return (
@@ -655,7 +655,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
   const cohortQ = useQuery({
     queryKey: ["cohorts-ids", cohort],
     queryFn: async () => {
-      const res = await fetch(`/api/cohorts?cohort=${encodeURIComponent(cohort ?? "June FEP")}`);
+      const res = await fetch(`/api/cohorts?cohort=${encodeURIComponent(cohort ?? "June EduSkill")}`);
       return res.json() as Promise<{ faculty: { userId: string }[] }>;
     },
   });
@@ -752,7 +752,7 @@ function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string
     },
   });
 
-  const cohorts = cohortQ.data?.cohorts ?? ["March FEP", "June FEP"];
+  const cohorts = cohortQ.data?.cohorts ?? ["March EduSkill", "June EduSkill"];
   const faculty = cohortQ.data?.faculty ?? [];
 
   return (
@@ -818,7 +818,7 @@ function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string
   );
 }
 
-function MarchFEPDashboard() {
+function MarchEduSkillDashboard() {
   const TARGET_INSTALLS = 100;
   const searchParams = useSearchParams();
   const urlFacultyId = searchParams ? searchParams.get("facultyId") : null;
@@ -844,9 +844,9 @@ function MarchFEPDashboard() {
   }, [urlFacultyId]);
 
   const cohortQ = useQuery({
-    queryKey: ["cohorts", "March FEP"],
+    queryKey: ["cohorts", "March EduSkill"],
     queryFn: async () => {
-      const res = await fetch(`/api/cohorts?cohort=${encodeURIComponent("March FEP")}`);
+      const res = await fetch(`/api/cohorts?cohort=${encodeURIComponent("March EduSkill")}`);
       return res.json() as Promise<{ faculty: any[]; total: number }>;
     },
   });
@@ -1008,11 +1008,11 @@ function MarchFEPDashboard() {
           <div className="flex items-center gap-3 mb-1">
             <div className="flex items-center gap-2 rounded-full border border-border bg-bg-elev/50 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-fg-muted">
               <Sparkles className="h-3 w-3" />
-              March FEP Cohort
+              March EduSkill Cohort
             </div>
           </div>
           <h1 className="text-xl md:text-2xl font-semibold tracking-tight font-sans">App Install & Engagement Tracking</h1>
-          <p className="text-sm text-fg-muted mt-1">Attribution details and custom profile management for March FEP faculty</p>
+          <p className="text-sm text-fg-muted mt-1">Attribution details and custom profile management for March EduSkill faculty</p>
         </div>
       </motion.div>
 
@@ -1285,7 +1285,7 @@ function MarchFEPDashboard() {
           ) : (
             <div className="glass rounded-2xl p-10 text-center space-y-6">
               <div className="max-w-md mx-auto space-y-2">
-                <h3 className="text-sm font-semibold tracking-tight text-fg/90">March FEP Overview</h3>
+                <h3 className="text-sm font-semibold tracking-tight text-fg/90">March EduSkill Overview</h3>
                 <p className="text-xs text-fg-muted">Select a faculty member from the leaderboard to view individual install statistics, customize their subjects, edit profile details, upload their photos, and manage their teaching videos.</p>
               </div>
 

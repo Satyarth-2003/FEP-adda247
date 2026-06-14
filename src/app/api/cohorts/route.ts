@@ -6,7 +6,7 @@ import type { User } from "@/types";
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "fep_manager" && user.role !== "fep_admin")) {
+  if (!user || (user.role !== "eduskill_manager" && user.role !== "eduskill_admin")) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     TableName: TABLES.USERS,
     FilterExpression: "#r = :r",
     ExpressionAttributeNames: { "#r": "role" },
-    ExpressionAttributeValues: { ":r": "fep_faculty" },
+    ExpressionAttributeValues: { ":r": "eduskill_faculty" },
   }));
 
   const allFaculty = (res.Items ?? []) as User[];

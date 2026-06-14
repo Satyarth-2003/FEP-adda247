@@ -8,7 +8,7 @@ import type { User } from "@/types";
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (user.role !== "fep_manager" && user.role !== "fep_admin") {
+  if (user.role !== "eduskill_manager" && user.role !== "eduskill_admin") {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
       TableName: TABLES.USERS,
       FilterExpression: "#r = :r",
       ExpressionAttributeNames: { "#r": "role" },
-      ExpressionAttributeValues: { ":r": "fep_faculty" },
+      ExpressionAttributeValues: { ":r": "eduskill_faculty" },
     })
   );
   let items = (r.Items ?? []) as User[];
@@ -47,7 +47,7 @@ export async function PUT(req: Request) {
 
   // Faculty can only update themselves. Managers/admins can update anyone.
   const targetUserId = userId || user.userId;
-  if (user.role === "fep_faculty" && targetUserId !== user.userId) {
+  if (user.role === "eduskill_faculty" && targetUserId !== user.userId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 

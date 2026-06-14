@@ -191,7 +191,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                         {hideScoring ? (
                           <div className="glass rounded-xl p-6 text-center space-y-2 border border-border/50">
                             <p className="text-xs font-semibold text-fg/80">March Cohort Video</p>
-                            <p className="text-[11px] text-fg-muted">Rating and scoring capabilities are not enabled for the March FEP cohort. Use the YouTube preview above to watch this video.</p>
+                            <p className="text-[11px] text-fg-muted">Rating and scoring capabilities are not enabled for the March EduSkill cohort. Use the YouTube preview above to watch this video.</p>
                           </div>
                         ) : (
                           <>

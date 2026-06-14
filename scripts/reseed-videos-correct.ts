@@ -25,7 +25,7 @@ const ddb = DynamoDBDocumentClient.from(
 
 const GRADI_URL = process.env.GRADI_API_URL || "https://gradi.ai/api/analyze-video";
 
-// Correct video-to-trainee mapping from FEP Weekly Review sheet (Best Content)
+// Correct video-to-trainee mapping from EduSkill Weekly Review sheet (Best Content)
 const CORRECT_MAPPING = [
   { trainee: "Fateh Singh",         video: "Partition Of Punjab",             url: "https://www.youtube.com/watch?v=3WTRlYnneqs" },
   { trainee: "Ankita Selakoti",     video: "Photosynthesis",                  url: "https://www.youtube.com/watch?v=f_x9SObhIgo" },
@@ -174,7 +174,7 @@ async function main() {
     }));
   }
 
-  console.log("\nDone. Videos are now correctly mapped to their original creators from the FEP sheet.");
+  console.log("\nDone. Videos are now correctly mapped to their original creators from the EduSkill sheet.");
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

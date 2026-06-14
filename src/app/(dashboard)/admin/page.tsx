@@ -7,9 +7,9 @@ import type { User, Role } from "@/types";
 import { cn } from "@/lib/utils";
 
 const ROLE_LABELS: Record<Role, { label: string; color: string }> = {
-  fep_admin:   { label: "Admin",   color: "text-violet-500 bg-violet-500/10 border-violet-500/25" },
-  fep_manager: { label: "Manager", color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/25" },
-  fep_faculty: { label: "Faculty", color: "text-sky-500 bg-sky-500/10 border-sky-500/25" },
+  eduskill_admin:   { label: "Admin",   color: "text-violet-500 bg-violet-500/10 border-violet-500/25" },
+  eduskill_manager: { label: "Manager", color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/25" },
+  eduskill_faculty: { label: "Faculty", color: "text-sky-500 bg-sky-500/10 border-sky-500/25" },
 };
 
 export default function AdminDashboard() {
@@ -17,7 +17,7 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ name: "", email: "", phone: "", role: "fep_faculty" as Role, subjects: "", teachingSubject: "", examTarget: "" });
+  const [draft, setDraft] = useState({ name: "", email: "", phone: "", role: "eduskill_faculty" as Role, subjects: "", teachingSubject: "", examTarget: "" });
 
   const usersQ = useQuery<{ users: User[] }>({
     queryKey: ["admin-users"],
@@ -27,7 +27,7 @@ export default function AdminDashboard() {
   const createMut = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(r => r.json()),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); setAdding(false); setDraft({ name: "", email: "", phone: "", role: "fep_faculty", subjects: "", teachingSubject: "", examTarget: "" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); setAdding(false); setDraft({ name: "", email: "", phone: "", role: "eduskill_faculty", subjects: "", teachingSubject: "", examTarget: "" }); },
   });
 
   const deleteMut = useMutation({
@@ -45,9 +45,9 @@ export default function AdminDashboard() {
 
   const stats = {
     total: users.length,
-    faculty: users.filter(u => u.role === "fep_faculty").length,
-    managers: users.filter(u => u.role === "fep_manager").length,
-    admins: users.filter(u => u.role === "fep_admin").length,
+    faculty: users.filter(u => u.role === "eduskill_faculty").length,
+    managers: users.filter(u => u.role === "eduskill_manager").length,
+    admins: users.filter(u => u.role === "eduskill_admin").length,
   };
 
   return (
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
           <Shield className="h-3 w-3" />Admin Console
         </div>
         <h1 className="text-2xl font-semibold tracking-tight mb-1">User Management</h1>
-        <p className="text-sm text-fg-muted mb-6">Add, remove, and manage all FEP user accounts.</p>
+        <p className="text-sm text-fg-muted mb-6">Add, remove, and manage all EduSkill user accounts.</p>
       </motion.div>
 
       {/* Stats row */}
@@ -79,9 +79,9 @@ export default function AdminDashboard() {
         <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
           className="rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none">
           <option value="all">All Roles</option>
-          <option value="fep_faculty">Faculty</option>
-          <option value="fep_manager">Manager</option>
-          <option value="fep_admin">Admin</option>
+          <option value="eduskill_faculty">Faculty</option>
+          <option value="eduskill_manager">Manager</option>
+          <option value="eduskill_admin">Admin</option>
         </select>
         <button onClick={() => setAdding(true)}
           className="flex items-center gap-2 rounded-full bg-fg px-4 py-2 text-sm font-medium text-bg hover:bg-fg/90 transition-colors">
@@ -103,9 +103,9 @@ export default function AdminDashboard() {
               placeholder="Phone" className="rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none" />
             <select value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value as Role }))}
               className="rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none">
-              <option value="fep_faculty">Faculty</option>
-              <option value="fep_manager">Manager</option>
-              <option value="fep_admin">Admin</option>
+              <option value="eduskill_faculty">Faculty</option>
+              <option value="eduskill_manager">Manager</option>
+              <option value="eduskill_admin">Admin</option>
             </select>
             <input value={draft.subjects} onChange={e => setDraft(d => ({ ...d, subjects: e.target.value }))}
               placeholder="Vertical (e.g. ssc, neet)" className="rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none" />
@@ -155,7 +155,7 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {filtered.map(u => {
-                  const r = ROLE_LABELS[u.role] ?? ROLE_LABELS.fep_faculty;
+                  const r = ROLE_LABELS[u.role] ?? ROLE_LABELS.eduskill_faculty;
                   return (
                     <tr key={u.userId} className="group border-b border-border/60 last:border-0 hover:bg-bg-elev/40 transition-colors">
                       <td className="px-5 py-2.5 font-medium text-fg/90 whitespace-nowrap">{u.name}</td>

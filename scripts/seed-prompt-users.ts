@@ -236,11 +236,11 @@ async function seed() {
           name,
           email,
           phone,
-          role: "fep_faculty",
+          role: "eduskill_faculty",
           subjects: ["foundation"], // Default vertical
           teachingSubject: "General Studies",
           examTarget: "SSC",
-          cohort: "June FEP",
+          cohort: "June EduSkill",
           passwordHash,
           createdAt: new Date().toISOString(),
         },

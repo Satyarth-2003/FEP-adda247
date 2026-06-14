@@ -4,8 +4,8 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "FEP · Faculty Excellence Program",
-  description: "Adda247 — Faculty Excellence Program Dashboard",
+  title: "EduSkill · EduSkill Program",
+  description: "Adda247 — EduSkill Program Dashboard",
 };
 
 export default async function RootLayout({
@@ -13,7 +13,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   // Read theme from cookie server-side → no flash, no inline script.
   const store = await cookies();
-  const cookieTheme = store.get("fep_theme")?.value;
+  const cookieTheme = store.get("eduskill_theme")?.value;
   const theme: "light" | "dark" =
     cookieTheme === "light" || cookieTheme === "dark" ? cookieTheme : "dark";
 

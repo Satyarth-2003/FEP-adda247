@@ -14,10 +14,10 @@ const Ctx = createContext<ThemeCtx | null>(null);
 function persist(theme: Theme) {
   if (typeof document === "undefined") return;
   try {
-    localStorage.setItem("fep_theme", theme);
+    localStorage.setItem("eduskill_theme", theme);
   } catch {}
   // 1-year cookie so the server-rendered layout picks the right theme on next request
-  document.cookie = `fep_theme=${theme}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+  document.cookie = `eduskill_theme=${theme}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
 }
 
 export function ThemeProvider({

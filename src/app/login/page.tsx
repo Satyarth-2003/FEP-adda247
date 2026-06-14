@@ -39,7 +39,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Google sign-in failed");
-      const dest = data.user.role === "fep_admin" || data.user.role === "fep_manager" ? "/manager" : "/faculty";
+      const dest = data.user.role === "eduskill_admin" || data.user.role === "eduskill_manager" ? "/manager" : "/faculty";
       router.replace(dest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign-in failed");
@@ -89,7 +89,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      const dest = data.user.role === "fep_admin" || data.user.role === "fep_manager" ? "/manager" : "/faculty";
+      const dest = data.user.role === "eduskill_admin" || data.user.role === "eduskill_manager" ? "/manager" : "/faculty";
       router.replace(dest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -125,7 +125,7 @@ export default function LoginPage() {
               transition={{ delay: 0.15 }}
               className="mt-1 text-sm text-fg-muted"
             >
-              Sign in to your Faculty Excellence Program account.
+              Sign in to your EduSkill Program account.
             </motion.p>
           </div>
 

@@ -1,4 +1,4 @@
-export type Role = "fep_faculty" | "fep_manager" | "fep_admin";
+export type Role = "eduskill_faculty" | "eduskill_manager" | "eduskill_admin";
 
 export type VideoStatus =
   | "uploaded"
@@ -15,7 +15,7 @@ export interface User {
   subjects: string[];           // verticals (ssc, foundation, neet, etc.)
   teachingSubject?: string;     // what they actually teach (Maths, History, etc.)
   examTarget?: string;          // detailed exam target description
-  cohort?: string;              // e.g. "June FEP", "March FEP"
+  cohort?: string;              // e.g. "June EduSkill", "March EduSkill"
   adjustToken?: string;         // Adjust tracking token
   trackingLink?: string;        // Full adjust tracking link
   passwordHash?: string;
@@ -61,7 +61,7 @@ export interface GradiAnalysis {
 }
 
 /**
- * Manager scores 5 parameters from the original FEP sheet:
+ * Manager scores 5 parameters from the original EduSkill sheet:
  * Board-work, Visual TLM, Energy, Delivery, Hook  — each 1–5 = 25 pts total
  */
 export interface ManagerRating {
@@ -91,7 +91,7 @@ export interface JWTPayload {
   role: Role;
 }
 
-/** 5 parameters the manager scores, mirroring the original FEP Video Log sheet */
+/** 5 parameters the manager scores, mirroring the original EduSkill Video Log sheet */
 export const MANAGER_PARAMS = [
   { key: "boardWork",  label: "Board-work",  desc: "Whiteboard / chalk work quality" },
   { key: "visualTLM", label: "Visual TLM",   desc: "Teaching-learning material usage" },

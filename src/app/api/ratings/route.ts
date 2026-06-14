@@ -8,7 +8,7 @@ import type { ManagerRating, Video } from "@/types";
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (user.role !== "fep_manager" && user.role !== "fep_admin") {
+  if (user.role !== "eduskill_manager" && user.role !== "eduskill_admin") {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 

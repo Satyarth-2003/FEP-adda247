@@ -111,7 +111,7 @@ async function main() {
       TableName: "fep-users",
       FilterExpression: "#r = :r",
       ExpressionAttributeNames: { "#r": "role" },
-      ExpressionAttributeValues: { ":r": "fep_faculty" },
+      ExpressionAttributeValues: { ":r": "eduskill_faculty" },
     })
   );
   const allFaculty = (usersRes.Items ?? []) as FacultyUser[];

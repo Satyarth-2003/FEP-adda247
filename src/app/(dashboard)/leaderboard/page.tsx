@@ -26,27 +26,27 @@ function getAvatarColor(name: string) {
 }
 
 export default function LeaderboardPage() {
-  const [selectedCohort, setSelectedCohort] = useState<"June FEP" | "March FEP">("June FEP");
+  const [selectedCohort, setSelectedCohort] = useState<"June EduSkill" | "March EduSkill">("June EduSkill");
   const [selectedTab, setSelectedTab] = useState<string>("total");
   const [showAllTop, setShowAllTop] = useState(false);
   const [showAllBottom, setShowAllBottom] = useState(false);
 
-  // Fetch March FEP stats
+  // Fetch March EduSkill stats
   const marchQ = useQuery<{ leaderboard: FacultyLeaderRow[] }>({
     queryKey: ["leaderboard-march"],
-    queryFn: () => fetch("/api/stats?scope=all&cohort=March+FEP").then(r => r.json()),
+    queryFn: () => fetch("/api/stats?scope=all&cohort=March+EduSkill").then(r => r.json()),
     refetchInterval: 15_000,
   });
 
-  // Fetch June FEP stats
+  // Fetch June EduSkill stats
   const juneQ = useQuery<{ leaderboard: FacultyLeaderRow[] }>({
     queryKey: ["leaderboard-june"],
-    queryFn: () => fetch("/api/stats?scope=all&cohort=June+FEP").then(r => r.json()),
+    queryFn: () => fetch("/api/stats?scope=all&cohort=June+EduSkill").then(r => r.json()),
     refetchInterval: 15_000,
   });
 
-  const loading = selectedCohort === "June FEP" ? juneQ.isLoading : marchQ.isLoading;
-  const list = selectedCohort === "June FEP" ? (juneQ.data?.leaderboard ?? []) : (marchQ.data?.leaderboard ?? []);
+  const loading = selectedCohort === "June EduSkill" ? juneQ.isLoading : marchQ.isLoading;
+  const list = selectedCohort === "June EduSkill" ? (juneQ.data?.leaderboard ?? []) : (marchQ.data?.leaderboard ?? []);
 
   const topPerformers = showAllTop ? list : list.slice(0, 10);
   const bottomCount = list.length > 3 ? Math.max(3, Math.ceil(list.length * 0.2)) : 0;
@@ -71,13 +71,13 @@ export default function LeaderboardPage() {
           <Trophy className="h-5 w-5 text-amber-500" />
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Faculty Leaderboard</h1>
-            <p className="text-[11px] text-fg-muted">Adda247 Faculty Excellence Program</p>
+            <p className="text-[11px] text-fg-muted">Adda247 EduSkill Program</p>
           </div>
         </div>
 
         {/* Cohort Selector */}
         <div className="flex items-center gap-1 rounded-xl border border-border bg-bg-elev/50 p-1 w-fit">
-          {(["June FEP", "March FEP"] as const).map(c => (
+          {(["June EduSkill", "March EduSkill"] as const).map(c => (
             <button key={c} onClick={() => { setSelectedCohort(c); setSelectedTab("total"); }}
               className={cn(
                 "rounded-lg px-4 py-1.5 text-xs font-medium transition-all cursor-pointer",
@@ -123,13 +123,13 @@ export default function LeaderboardPage() {
             <div className="space-y-2">
               <div className={cn(
                 "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
-                selectedCohort === "March FEP" 
+                selectedCohort === "March EduSkill" 
                   ? "grid-cols-[40px_1fr_100px_40px]" 
                   : "grid-cols-[40px_1fr_120px_40px]"
               )}>
                 <span>Rank</span>
                 <span>Faculty</span>
-                {selectedCohort === "March FEP" ? (
+                {selectedCohort === "March EduSkill" ? (
                   <span className="text-right">Installs</span>
                 ) : (
                   <span className="text-right">Avg Score /25</span>
@@ -144,7 +144,7 @@ export default function LeaderboardPage() {
                     <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
                       <Link href={`/manager?facultyId=${f.userId}`} className={cn(
                         "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
-                        selectedCohort === "March FEP" 
+                        selectedCohort === "March EduSkill" 
                           ? "grid-cols-[40px_1fr_100px_40px]" 
                           : "grid-cols-[40px_1fr_120px_40px]"
                       )}>
@@ -160,7 +160,7 @@ export default function LeaderboardPage() {
                           </div>
                         </div>
 
-                        {selectedCohort === "March FEP" ? (
+                        {selectedCohort === "March EduSkill" ? (
                           <span className="text-mono text-sm font-bold text-emerald-400 text-right">{f.installs}</span>
                         ) : (
                           <span className="text-mono text-sm font-bold text-emerald-400 text-right">
@@ -205,13 +205,13 @@ export default function LeaderboardPage() {
             <div className="space-y-2">
               <div className={cn(
                 "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
-                selectedCohort === "March FEP" 
+                selectedCohort === "March EduSkill" 
                   ? "grid-cols-[40px_1fr_100px_40px]" 
                   : "grid-cols-[40px_1fr_120px_40px]"
               )}>
                 <span>Rank</span>
                 <span>Faculty</span>
-                {selectedCohort === "March FEP" ? (
+                {selectedCohort === "March EduSkill" ? (
                   <span className="text-right">Installs</span>
                 ) : (
                   <span className="text-right">Avg Score /25</span>
@@ -226,7 +226,7 @@ export default function LeaderboardPage() {
                     <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
                       <Link href={`/manager?facultyId=${f.userId}`} className={cn(
                         "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
-                        selectedCohort === "March FEP" 
+                        selectedCohort === "March EduSkill" 
                           ? "grid-cols-[40px_1fr_100px_40px]" 
                           : "grid-cols-[40px_1fr_120px_40px]"
                       )}>
@@ -240,7 +240,7 @@ export default function LeaderboardPage() {
                           </div>
                         </div>
 
-                        {selectedCohort === "March FEP" ? (
+                        {selectedCohort === "March EduSkill" ? (
                           <span className="text-mono text-sm font-bold text-rose-400 text-right">{f.installs}</span>
                         ) : (
                           <span className="text-mono text-sm font-bold text-rose-400 text-right">

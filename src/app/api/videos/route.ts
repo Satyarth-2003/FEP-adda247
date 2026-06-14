@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const facultyId = searchParams.get("facultyId");
   const subjectId = searchParams.get("subjectId");
 
-  if (user.role === "fep_faculty") {
+  if (user.role === "eduskill_faculty") {
     const r = await ddb.send(
       new QueryCommand({
         TableName: TABLES.VIDEOS,
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   let targetFacultyId = user.userId;
   let targetFacultyName = user.name;
 
-  if (user.role === "fep_manager" || user.role === "fep_admin") {
+  if (user.role === "eduskill_manager" || user.role === "eduskill_admin") {
     // Manager can assign to any faculty
     if (assignToFacultyId) {
       targetFacultyId = assignToFacultyId;
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-  } else if (user.role !== "fep_faculty") {
+  } else if (user.role !== "eduskill_faculty") {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
   if (!youtubeUrl) {

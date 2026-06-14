@@ -19,7 +19,7 @@ interface MarchFaculty {
   trackingLink: string;
 }
 
-const MARCH_FEP: MarchFaculty[] = [
+const MARCH_EduSkill: MarchFaculty[] = [
   { name: "Manvendra", email: "manvendra.singh@adda247.com", adjustToken: "21f5g8r6", trackingLink: "https://adda247.go.link?adj_t=21f5g8r6" },
   { name: "Nitish", email: "nitesh.narwani@adda247.com", adjustToken: "219b6g4o", trackingLink: "https://adda247.go.link?adj_t=219b6g4o" },
   { name: "Utkarsh", email: "utkarsh.mishra1@adda247.com", adjustToken: "21h1lkr3", trackingLink: "https://adda247.go.link?adj_t=21h1lkr3" },
@@ -47,11 +47,11 @@ async function emailExists(email: string): Promise<string | null> {
 }
 
 async function main() {
-  console.log(`🚀 Seeding March FEP cohort (${MARCH_FEP.length} faculty)...\n`);
+  console.log(`🚀 Seeding March EduSkill cohort (${MARCH_EduSkill.length} faculty)...\n`);
   const password = await bcrypt.hash("fep123", 10);
   let created = 0, updated = 0;
 
-  for (const f of MARCH_FEP) {
+  for (const f of MARCH_EduSkill) {
     const email = f.email.toLowerCase().trim();
     const existingId = await emailExists(email);
 
@@ -59,7 +59,7 @@ async function main() {
       await ddb.send(new UpdateCommand({
         TableName: "fep-users", Key: { userId: existingId },
         UpdateExpression: "SET cohort = :c, adjustToken = :at, trackingLink = :tl",
-        ExpressionAttributeValues: { ":c": "March FEP", ":at": f.adjustToken, ":tl": f.trackingLink },
+        ExpressionAttributeValues: { ":c": "March EduSkill", ":at": f.adjustToken, ":tl": f.trackingLink },
       }));
       updated++;
       console.log(`  Updated: ${f.name} (${email})`);
@@ -67,8 +67,8 @@ async function main() {
       await ddb.send(new PutCommand({
         TableName: "fep-users",
         Item: {
-          userId: uuid(), name: f.name, email, role: "fep_faculty",
-          subjects: [], cohort: "March FEP",
+          userId: uuid(), name: f.name, email, role: "eduskill_faculty",
+          subjects: [], cohort: "March EduSkill",
           adjustToken: f.adjustToken, trackingLink: f.trackingLink,
           passwordHash: password, createdAt: new Date().toISOString(),
         },

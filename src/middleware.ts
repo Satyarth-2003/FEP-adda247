@@ -34,17 +34,17 @@ export async function middleware(req: NextRequest) {
     const role = payload.role as string;
 
     // Role-scoped protections
-    if (pathname.startsWith("/admin") && role !== "fep_admin") {
+    if (pathname.startsWith("/admin") && role !== "eduskill_admin") {
       const url = req.nextUrl.clone();
-      url.pathname = role === "fep_manager" ? "/manager" : "/faculty";
+      url.pathname = role === "eduskill_manager" ? "/manager" : "/faculty";
       return NextResponse.redirect(url);
     }
-    if (pathname.startsWith("/manager") && role !== "fep_manager" && role !== "fep_admin") {
+    if (pathname.startsWith("/manager") && role !== "eduskill_manager" && role !== "eduskill_admin") {
       const url = req.nextUrl.clone();
       url.pathname = "/faculty";
       return NextResponse.redirect(url);
     }
-    if (pathname.startsWith("/faculty") && role === "fep_manager") {
+    if (pathname.startsWith("/faculty") && role === "eduskill_manager") {
       const url = req.nextUrl.clone();
       url.pathname = "/manager";
       return NextResponse.redirect(url);

@@ -306,7 +306,7 @@ function parseRawData(text: string) {
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "fep_manager" && user.role !== "fep_admin")) {
+  if (!user || (user.role !== "eduskill_manager" && user.role !== "eduskill_admin")) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 

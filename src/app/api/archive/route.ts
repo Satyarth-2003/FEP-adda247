@@ -26,7 +26,7 @@ export async function GET() {
 export async function PUT(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (user.role !== "fep_manager") {
+  if (user.role !== "eduskill_manager") {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 

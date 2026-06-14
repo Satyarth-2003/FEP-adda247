@@ -6,10 +6,10 @@ import { v4 as uuid } from "uuid";
 import bcrypt from "bcryptjs";
 import type { User, Role } from "@/types";
 
-// Only fep_admin can access this
+// Only eduskill_admin can access this
 async function requireAdmin() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "fep_admin") return null;
+  if (!user || user.role !== "eduskill_admin") return null;
   return user;
 }
 
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "name, email, role required" }, { status: 400 });
   }
 
-  const validRoles: Role[] = ["fep_faculty", "fep_manager", "fep_admin"];
+  const validRoles: Role[] = ["eduskill_faculty", "eduskill_manager", "eduskill_admin"];
   if (!validRoles.includes(role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }

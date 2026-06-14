@@ -23,8 +23,8 @@ interface FacultyEntry {
   examTarget: string;
 }
 
-// All June FEP faculty (deduplicated by email)
-const JUNE_FEP: FacultyEntry[] = [
+// All June EduSkill faculty (deduplicated by email)
+const JUNE_EduSkill: FacultyEntry[] = [
   { name: "Rana Mrituanjay Singh", phone: "9935177381", email: "ranamrityunjay2015@gmail.com", teachingSubject: "History", examTarget: "SSC, One Day Exam" },
   { name: "Mayank Kumar", phone: "9140582792", email: "mayankpathak0098@gmail.com", teachingSubject: "Maths", examTarget: "Class 9-10" },
   { name: "Prem Raj", phone: "8709131540", email: "prempipul7209@gmail.com", teachingSubject: "Biology", examTarget: "NEET" },
@@ -185,12 +185,12 @@ async function emailExists(email: string): Promise<string | null> {
 }
 
 async function main() {
-  console.log(`🚀 Seeding June FEP cohort (${JUNE_FEP.length} entries, deduplicated)...\n`);
+  console.log(`🚀 Seeding June EduSkill cohort (${JUNE_EduSkill.length} entries, deduplicated)...\n`);
   const password = await bcrypt.hash("fep123", 10);
   let created = 0, updated = 0, skipped = 0;
   const seen = new Set<string>();
 
-  for (const f of JUNE_FEP) {
+  for (const f of JUNE_EduSkill) {
     const email = f.email.toLowerCase().trim();
     if (seen.has(email)) { skipped++; continue; }
     seen.add(email);
@@ -202,7 +202,7 @@ async function main() {
         TableName: "fep-users",
         Key: { userId: existingId },
         UpdateExpression: "SET cohort = :c, teachingSubject = :ts, examTarget = :et",
-        ExpressionAttributeValues: { ":c": "June FEP", ":ts": f.teachingSubject, ":et": f.examTarget },
+        ExpressionAttributeValues: { ":c": "June EduSkill", ":ts": f.teachingSubject, ":et": f.examTarget },
       }));
       updated++;
     } else {
@@ -213,11 +213,11 @@ async function main() {
           name: f.name,
           email,
           phone: f.phone,
-          role: "fep_faculty",
+          role: "eduskill_faculty",
           subjects: [],
           teachingSubject: f.teachingSubject,
           examTarget: f.examTarget,
-          cohort: "June FEP",
+          cohort: "June EduSkill",
           passwordHash: password,
           createdAt: new Date().toISOString(),
         },
@@ -227,7 +227,7 @@ async function main() {
   }
 
   console.log(`✓ Created: ${created} new accounts`);
-  console.log(`✓ Updated: ${updated} existing (added June FEP tag)`);
+  console.log(`✓ Updated: ${updated} existing (added June EduSkill tag)`);
   console.log(`✓ Skipped: ${skipped} duplicates\n`);
   console.log("Login: any email + password 'fep123'");
 }

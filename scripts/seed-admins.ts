@@ -63,7 +63,7 @@ async function main() {
       if (existing) {
         await ddb.send(new PutCommand({
           TableName: "fep-users",
-          Item: { ...existing, role: "fep_admin" },
+          Item: { ...existing, role: "eduskill_admin" },
         }));
       }
       continue;
@@ -74,7 +74,7 @@ async function main() {
         userId: uuid(),
         name: a.name,
         email,
-        role: "fep_admin",
+        role: "eduskill_admin",
         subjects: [],
         passwordHash: password,
         createdAt: new Date().toISOString(),
@@ -96,10 +96,10 @@ async function main() {
         ExpressionAttributeValues: { ":e": email },
       }));
       const existing = r.Items?.[0];
-      if (existing && existing.role !== "fep_admin") {
+      if (existing && existing.role !== "eduskill_admin") {
         await ddb.send(new PutCommand({
           TableName: "fep-users",
-          Item: { ...existing, role: "fep_manager" },
+          Item: { ...existing, role: "eduskill_manager" },
         }));
         console.log(`  ✓ ${email} upgraded to manager`);
       } else {
@@ -113,7 +113,7 @@ async function main() {
         userId: uuid(),
         name: m.name,
         email,
-        role: "fep_manager",
+        role: "eduskill_manager",
         subjects: [],
         passwordHash: password,
         createdAt: new Date().toISOString(),

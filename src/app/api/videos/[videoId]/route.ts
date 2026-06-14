@@ -16,7 +16,7 @@ export async function GET(
 
   // Find the video — scan via Query if faculty, else scan all (small dataset)
   let video: Video | undefined;
-  if (user.role === "fep_faculty") {
+  if (user.role === "eduskill_faculty") {
     const r = await ddb.send(
       new QueryCommand({
         TableName: TABLES.VIDEOS,
@@ -79,7 +79,7 @@ export async function DELETE(
   if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
 
   // Faculty can only delete their own videos. Managers/admins can delete any.
-  if (user.role === "fep_faculty" && video.facultyId !== user.userId) {
+  if (user.role === "eduskill_faculty" && video.facultyId !== user.userId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 

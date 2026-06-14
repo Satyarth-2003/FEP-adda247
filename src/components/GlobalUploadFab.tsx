@@ -25,11 +25,11 @@ export function GlobalUploadFab() {
       if (!r.ok) return { users: [] };
       return r.json();
     }),
-    enabled: meQ.data?.user?.role === "fep_manager" || meQ.data?.user?.role === "fep_admin",
+    enabled: meQ.data?.user?.role === "eduskill_manager" || meQ.data?.user?.role === "eduskill_admin",
   });
 
   const role = meQ.data?.user?.role;
-  const isManagerOrAdmin = role === "fep_manager" || role === "fep_admin";
+  const isManagerOrAdmin = role === "eduskill_manager" || role === "eduskill_admin";
 
   if (!isManagerOrAdmin) return null;
 

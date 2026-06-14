@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 interface TopNavProps {
   userName: string;
-  role: "fep_faculty" | "fep_manager" | "fep_admin";
+  role: "eduskill_faculty" | "eduskill_manager" | "eduskill_admin";
 }
 
 export function TopNav({ userName, role }: TopNavProps) {
@@ -30,11 +30,11 @@ export function TopNav({ userName, role }: TopNavProps) {
   const [cohort, setCohort] = useState<string>("");
   const [showCohortMenu, setShowCohortMenu] = useState(false);
 
-  const isManager = role === "fep_manager" || role === "fep_admin";
+  const isManager = role === "eduskill_manager" || role === "eduskill_admin";
 
   useEffect(() => {
     if (isManager) {
-      const saved = localStorage.getItem("selectedCohort") || "June FEP";
+      const saved = localStorage.getItem("selectedCohort") || "June EduSkill";
       setCohort(saved);
     }
   }, [isManager]);
@@ -52,12 +52,12 @@ export function TopNav({ userName, role }: TopNavProps) {
     router.replace("/login");
   }
 
-  const dashHref = role === "fep_manager" || role === "fep_admin" ? "/manager" : "/faculty";
+  const dashHref = role === "eduskill_manager" || role === "eduskill_admin" ? "/manager" : "/faculty";
 
   const navItems = [
     { href: dashHref, label: "Dashboard", icon: LayoutDashboard },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    ...(role === "fep_admin" ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
+    ...(role === "eduskill_admin" ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 
   return (
@@ -72,7 +72,7 @@ export function TopNav({ userName, role }: TopNavProps) {
           <Logo />
           <div className="hidden md:flex items-center gap-1.5 rounded-full border border-border bg-bg-elev/50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-fg-muted">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-ring text-emerald-500" />
-            {role === "fep_manager" ? "Manager" : "Faculty"}
+            {role === "eduskill_manager" ? "Manager" : "Faculty"}
           </div>
 
           {/* Cohort selector for managers */}
@@ -88,7 +88,7 @@ export function TopNav({ userName, role }: TopNavProps) {
               </button>
               {showCohortMenu && (
                 <div className="absolute top-full mt-1 left-0 z-50 rounded-lg border border-border bg-bg-elev shadow-lg py-1 min-w-[140px]">
-                  {["March FEP", "June FEP"].map(c => (
+                  {["March EduSkill", "June EduSkill"].map(c => (
                     <button key={c} onClick={() => selectCohort(c)}
                       className={cn("block w-full text-left px-3 py-1.5 text-xs transition-colors",
                         cohort === c ? "text-fg font-medium bg-bg-elev/80" : "text-fg-muted hover:text-fg hover:bg-bg-elev/60")}>

@@ -129,7 +129,7 @@ export default function FacultyDashboard() {
     return tabs;
   }, [subjects, stats]);
 
-  const isOwnProfile = user?.role === "fep_faculty" && (!facultyId || facultyId === user?.userId);
+  const isOwnProfile = user?.role === "eduskill_faculty" && (!facultyId || facultyId === user?.userId);
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-8 md:py-10">

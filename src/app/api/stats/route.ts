@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const facultyId = searchParams.get("facultyId") ?? user.userId;
 
   // Faculty: own stats only. Manager: any.
-  if (user.role === "fep_faculty" && facultyId !== user.userId) {
+  if (user.role === "eduskill_faculty" && facultyId !== user.userId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
@@ -26,8 +26,8 @@ export async function GET(req: Request) {
   );
   const facultyUser = facultyUserRes.Item as User | undefined;
 
-  if (searchParams.get("scope") === "all" && (user.role === "fep_manager" || user.role === "fep_admin")) {
-    return aggregateAll(searchParams.get("cohort") ?? "June FEP");
+  if (searchParams.get("scope") === "all" && (user.role === "eduskill_manager" || user.role === "eduskill_admin")) {
+    return aggregateAll(searchParams.get("cohort") ?? "June EduSkill");
   }
 
   const videosRes = await ddb.send(
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
     facultyId,
     facultyName: facultyUser?.name || "Unknown Faculty",
     facultyEmail: facultyUser?.email || "",
-    cohort: facultyUser?.cohort || "June FEP",
+    cohort: facultyUser?.cohort || "June EduSkill",
     age: facultyUser?.age,
     dob: facultyUser?.dob,
     subjects: facultyUser?.subjects || [],
@@ -109,14 +109,14 @@ export async function GET(req: Request) {
   });
 }
 
-async function aggregateAll(cohort: string = "June FEP") {
+async function aggregateAll(cohort: string = "June EduSkill") {
   const [usersRes, videosRes, analysesRes, ratingsRes] = await Promise.all([
     ddb.send(
       new ScanCommand({
         TableName: TABLES.USERS,
         FilterExpression: "#r = :r AND cohort = :c",
         ExpressionAttributeNames: { "#r": "role" },
-        ExpressionAttributeValues: { ":r": "fep_faculty", ":c": cohort },
+        ExpressionAttributeValues: { ":r": "eduskill_faculty", ":c": cohort },
       })
     ),
     ddb.send(new ScanCommand({ TableName: TABLES.VIDEOS })),
@@ -132,7 +132,7 @@ async function aggregateAll(cohort: string = "June FEP") {
 
   let leaderboard: any[] = [];
 
-  if (cohort === "March FEP") {
+  if (cohort === "March EduSkill") {
     // Attempt to fetch from Adjust or use mock data
     const tokens = users.filter(u => u.adjustToken).map(u => u.adjustToken!);
     const adjustMap = new Map<string, { installs: number; clicks: number; sessions: number }>();
