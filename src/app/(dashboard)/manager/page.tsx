@@ -57,6 +57,33 @@ export default function ManagerDashboard() {
   const [selectedCohort, setSelectedCohort] = useState<string>("June EduSkill");
   const [activeCohort, setActiveCohort] = useState<string>("June EduSkill");
 
+  const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
+  const [videoYTStats, setVideoYTStats] = useState<Record<string, any>>({});
+  const [loadingVideoYTStats, setLoadingVideoYTStats] = useState<Record<string, boolean>>({});
+
+  async function fetchVideoYTStats(videoId: string) {
+    if (videoYTStats[videoId] !== undefined) return;
+    setLoadingVideoYTStats(prev => ({ ...prev, [videoId]: true }));
+    try {
+      const res = await fetch(`/api/videos/${videoId}/youtube-stats`);
+      const data = await res.json();
+      setVideoYTStats(prev => ({ ...prev, [videoId]: data }));
+    } catch {
+      setVideoYTStats(prev => ({ ...prev, [videoId]: null }));
+    } finally {
+      setLoadingVideoYTStats(prev => ({ ...prev, [videoId]: false }));
+    }
+  }
+
+  function toggleExpandVideoRow(videoId: string) {
+    if (expandedVideoId === videoId) {
+      setExpandedVideoId(null);
+    } else {
+      setExpandedVideoId(videoId);
+      fetchVideoYTStats(videoId);
+    }
+  }
+
   useEffect(() => {
     let saved = localStorage.getItem("selectedCohort") || "June EduSkill";
     if (saved.includes("FEP")) {
