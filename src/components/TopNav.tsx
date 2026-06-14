@@ -34,7 +34,11 @@ export function TopNav({ userName, role }: TopNavProps) {
 
   useEffect(() => {
     if (isManager) {
-      const saved = localStorage.getItem("selectedCohort") || "June EduSkill";
+      let saved = localStorage.getItem("selectedCohort") || "June EduSkill";
+      if (saved.includes("FEP")) {
+        saved = saved.replace("FEP", "EduSkill");
+        localStorage.setItem("selectedCohort", saved);
+      }
       setCohort(saved);
     }
   }, [isManager]);

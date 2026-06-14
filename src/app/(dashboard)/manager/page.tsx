@@ -57,9 +57,12 @@ export default function ManagerDashboard() {
   const [selectedCohort, setSelectedCohort] = useState<string>("June EduSkill");
   const [activeCohort, setActiveCohort] = useState<string>("June EduSkill");
 
-  // Listen for cohort changes from TopNav
   useEffect(() => {
-    const saved = localStorage.getItem("selectedCohort") || "June EduSkill";
+    let saved = localStorage.getItem("selectedCohort") || "June EduSkill";
+    if (saved.includes("FEP")) {
+      saved = saved.replace("FEP", "EduSkill");
+      localStorage.setItem("selectedCohort", saved);
+    }
     setActiveCohort(saved);
     function handleCohortChange(e: Event) {
       const c = (e as CustomEvent).detail;

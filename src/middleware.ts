@@ -31,7 +31,10 @@ export async function middleware(req: NextRequest) {
 
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    const role = payload.role as string;
+    let role = payload.role as string;
+    if (role === "fep_faculty") role = "eduskill_faculty";
+    if (role === "fep_manager") role = "eduskill_manager";
+    if (role === "fep_admin") role = "eduskill_admin";
 
     // Role-scoped protections
     if (pathname.startsWith("/admin") && role !== "eduskill_admin") {

@@ -18,7 +18,13 @@ export async function signToken(payload: JWTPayload): Promise<string> {
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    return payload as unknown as JWTPayload;
+    const typed = payload as unknown as JWTPayload;
+    if (typed && typed.role) {
+      if (typed.role === "fep_faculty" as any) typed.role = "eduskill_faculty";
+      if (typed.role === "fep_manager" as any) typed.role = "eduskill_manager";
+      if (typed.role === "fep_admin" as any) typed.role = "eduskill_admin";
+    }
+    return typed;
   } catch {
     return null;
   }
