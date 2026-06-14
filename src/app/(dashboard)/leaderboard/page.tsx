@@ -28,6 +28,8 @@ function getAvatarColor(name: string) {
 export default function LeaderboardPage() {
   const [selectedCohort, setSelectedCohort] = useState<"June FEP" | "March FEP">("June FEP");
   const [selectedTab, setSelectedTab] = useState<string>("total");
+  const [showAllTop, setShowAllTop] = useState(false);
+  const [showAllBottom, setShowAllBottom] = useState(false);
 
   // Fetch March FEP stats
   const marchQ = useQuery<{ leaderboard: FacultyLeaderRow[] }>({
@@ -45,6 +47,12 @@ export default function LeaderboardPage() {
 
   const loading = selectedCohort === "June FEP" ? juneQ.isLoading : marchQ.isLoading;
   const list = selectedCohort === "June FEP" ? (juneQ.data?.leaderboard ?? []) : (marchQ.data?.leaderboard ?? []);
+
+  const topPerformers = showAllTop ? list : list.slice(0, 10);
+  const bottomCount = list.length > 3 ? Math.max(3, Math.ceil(list.length * 0.2)) : 0;
+  const bottomPerformers = list.length > 3
+    ? (showAllBottom ? list.slice(-bottomCount) : list.slice(-bottomCount).slice(0, 10))
+    : [];
 
   // Tabs: Total
   const tabs = [
@@ -77,7 +85,7 @@ export default function LeaderboardPage() {
                   ? "bg-fg text-bg shadow-sm"
                   : "text-fg-muted hover:text-fg"
               )}>
-              {c}
+                {c}
             </button>
           ))}
         </div>
@@ -95,85 +103,169 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
-      {/* Leaderboard Table / Cards */}
-      <div className="glass rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            <h3 className="text-sm font-semibold">Leaderboard Ranking</h3>
+      {/* Side-by-Side Leaderboards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Performers */}
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <h3 className="text-sm font-semibold text-emerald-400">Top Performers</h3>
+            </div>
+            <span className="text-[10px] rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5">
+              {list.length} faculty members
+            </span>
           </div>
-          <span className="text-[10px] rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5">
-            {list.length} faculty members
-          </span>
+
+          {list.length === 0 ? (
+            <p className="text-xs text-fg-muted text-center py-8">No data loaded yet</p>
+          ) : (
+            <div className="space-y-2">
+              <div className={cn(
+                "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
+                selectedCohort === "March FEP" 
+                  ? "grid-cols-[40px_1fr_100px_40px]" 
+                  : "grid-cols-[40px_1fr_120px_40px]"
+              )}>
+                <span>Rank</span>
+                <span>Faculty</span>
+                {selectedCohort === "March FEP" ? (
+                  <span className="text-right">Installs</span>
+                ) : (
+                  <span className="text-right">Avg Score /25</span>
+                )}
+                <span className="text-right font-sans lowercase">view</span>
+              </div>
+
+              <AnimatePresence>
+                {topPerformers.map((f, i) => {
+                  const idx = list.indexOf(f);
+                  return (
+                    <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
+                      <Link href={`/manager?facultyId=${f.userId}`} className={cn(
+                        "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
+                        selectedCohort === "March FEP" 
+                          ? "grid-cols-[40px_1fr_100px_40px]" 
+                          : "grid-cols-[40px_1fr_120px_40px]"
+                      )}>
+                        <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono",
+                          idx === 0 ? "bg-amber-500/15 text-amber-500 border border-amber-500/30" : idx < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
+                        )}>{idx + 1}</span>
+                        
+                        <div className="flex items-center gap-3 min-w-0">
+                          <ColorAvatar name={f.name} />
+                          <div className="min-w-0">
+                            <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
+                            <span className="block text-[10px] text-fg-dim truncate">{f.email}</span>
+                          </div>
+                        </div>
+
+                        {selectedCohort === "March FEP" ? (
+                          <span className="text-mono text-sm font-bold text-emerald-400 text-right">{f.installs}</span>
+                        ) : (
+                          <span className="text-mono text-sm font-bold text-emerald-400 text-right">
+                            {f.avgGradiScore ? (f.avgGradiScore * 5).toFixed(1) : "—"}
+                          </span>
+                        )}
+
+                        <div className="flex justify-end">
+                          <ArrowRight className="h-4 w-4 text-fg-muted hover:text-fg" />
+                        </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+
+              {list.length > 10 && (
+                <button onClick={() => setShowAllTop(p => !p)}
+                  className="mt-3 w-full text-center text-[11px] font-medium text-fg-muted hover:text-fg transition-colors py-2 rounded-lg border border-border hover:border-border-strong cursor-pointer">
+                  {showAllTop ? `Show less` : `Show all ${list.length} faculty`}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {list.length === 0 ? (
-          <p className="text-xs text-fg-muted text-center py-8">No data loaded yet</p>
-        ) : (
-          <div className="space-y-2">
-            {/* Header row */}
-            <div className={cn(
-              "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
-              selectedCohort === "March FEP" 
-                ? "grid-cols-[40px_1fr_100px_100px_100px_40px]" 
-                : "grid-cols-[40px_1fr_120px_40px]"
-            )}>
-              <span>Rank</span>
-              <span>Faculty</span>
-              {selectedCohort === "March FEP" ? (
-                <>
-                  <span className="text-right">Installs</span>
-                  <span className="text-right">Views</span>
-                  <span className="text-right">Subscribers</span>
-                </>
-              ) : (
-                <span className="text-right">Avg Score /25</span>
-              )}
-              <span className="text-right">View</span>
+        {/* Bottom Performers */}
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
+              <h3 className="text-sm font-semibold text-rose-400">Needs Improvement</h3>
             </div>
-
-            <AnimatePresence>
-              {list.map((f, i) => (
-                <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
-                  <Link href={`/manager?facultyId=${f.userId}`} className={cn(
-                    "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3.5 transition-colors text-left",
-                    selectedCohort === "March FEP" 
-                      ? "grid-cols-[40px_1fr_100px_100px_100px_40px]" 
-                      : "grid-cols-[40px_1fr_120px_40px]"
-                  )}>
-                    <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono",
-                      i === 0 ? "bg-amber-500/15 text-amber-500 border border-amber-500/30" : i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
-                    )}>{i + 1}</span>
-                    
-                    <div className="flex items-center gap-3 min-w-0">
-                      <ColorAvatar name={f.name} />
-                      <div className="min-w-0">
-                        <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
-                        <span className="block text-[10px] text-fg-dim truncate">{f.email}</span>
-                      </div>
-                    </div>
-
-                    {selectedCohort === "March FEP" ? (
-                      <>
-                        <span className="text-mono text-sm font-bold text-emerald-400 text-right">{f.installs}</span>
-                        <span className="text-mono text-sm font-semibold text-blue-400 text-right">{f.views}</span>
-                        <span className="text-mono text-sm font-semibold text-violet-400 text-right">{f.subscribersGained}</span>
-                      </>
-                    ) : (
-                      <span className="text-mono text-sm font-bold text-emerald-400 text-right">
-                        {f.avgGradiScore ? (f.avgGradiScore * 5).toFixed(1) : "—"}
-                      </span>
-                    )}
-
-                    <div className="flex justify-end">
-                      <ArrowRight className="h-4 w-4 text-fg-muted hover:text-fg" />
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            <span className="text-[10px] rounded-full border border-rose-500/25 bg-rose-500/10 text-rose-400 px-2.5 py-0.5">
+              {bottomCount} faculty members
+            </span>
           </div>
-        )}
+
+          {bottomPerformers.length === 0 ? (
+            <p className="text-xs text-fg-muted text-center py-8">No data loaded yet</p>
+          ) : (
+            <div className="space-y-2">
+              <div className={cn(
+                "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
+                selectedCohort === "March FEP" 
+                  ? "grid-cols-[40px_1fr_100px_40px]" 
+                  : "grid-cols-[40px_1fr_120px_40px]"
+              )}>
+                <span>Rank</span>
+                <span>Faculty</span>
+                {selectedCohort === "March FEP" ? (
+                  <span className="text-right">Installs</span>
+                ) : (
+                  <span className="text-right">Avg Score /25</span>
+                )}
+                <span className="text-right font-sans lowercase">view</span>
+              </div>
+
+              <AnimatePresence>
+                {bottomPerformers.map((f, i) => {
+                  const idx = list.indexOf(f);
+                  return (
+                    <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
+                      <Link href={`/manager?facultyId=${f.userId}`} className={cn(
+                        "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
+                        selectedCohort === "March FEP" 
+                          ? "grid-cols-[40px_1fr_100px_40px]" 
+                          : "grid-cols-[40px_1fr_120px_40px]"
+                      )}>
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono text-fg-muted">{idx + 1}</span>
+                        
+                        <div className="flex items-center gap-3 min-w-0">
+                          <ColorAvatar name={f.name} />
+                          <div className="min-w-0">
+                            <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
+                            <span className="block text-[10px] text-fg-dim truncate">{f.email}</span>
+                          </div>
+                        </div>
+
+                        {selectedCohort === "March FEP" ? (
+                          <span className="text-mono text-sm font-bold text-rose-400 text-right">{f.installs}</span>
+                        ) : (
+                          <span className="text-mono text-sm font-bold text-rose-400 text-right">
+                            {f.avgGradiScore ? (f.avgGradiScore * 5).toFixed(1) : "—"}
+                          </span>
+                        )}
+
+                        <div className="flex justify-end">
+                          <ArrowRight className="h-4 w-4 text-fg-muted hover:text-fg" />
+                        </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+
+              {bottomCount > 10 && (
+                <button onClick={() => setShowAllBottom(p => !p)}
+                  className="mt-3 w-full text-center text-[11px] font-medium text-fg-muted hover:text-fg transition-colors py-2 rounded-lg border border-border hover:border-border-strong cursor-pointer">
+                  {showAllBottom ? `Show less` : `Show all ${bottomCount} faculty`}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
