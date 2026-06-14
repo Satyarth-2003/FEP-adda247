@@ -389,22 +389,10 @@ export default function ManagerDashboard() {
             </motion.div>
           ) : (
             <div className="space-y-5">
-              <div className="rounded-2xl border border-dashed border-border bg-bg-elev/30 py-8 text-center">
+              <div className="rounded-2xl border border-dashed border-border bg-bg-elev/30 py-16 text-center">
                 <p className="text-sm font-medium text-fg/85">
                   Select a faculty to drill in
                 </p>
-                <p className="mt-1 text-[11px] text-fg-muted">
-                  Or browse aggregate parameter performance below.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(aggQ.data?.subjectAgg ?? {}).map(([sid, v]) => (
-                  <SubjectRadar
-                    key={sid}
-                    title={subjectsByName[sid] ?? sid}
-                    data={buildRadarData(v.sums, v.n)}
-                  />
-                ))}
               </div>
             </div>
           )}
