@@ -680,6 +680,10 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
 
 function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, cohort }: { openVideoId: string | null; setOpenVideoId: (id: string | null) => void; managerId?: string; onRated: () => void; cohort?: string }) {
   const [ratingFilter, setRatingFilter] = useState<"unrated" | "rated" | "all">("unrated");
+  const [subjectFilter, setSubjectFilter] = useState<string>("all");
+  const [facultyFilter, setFacultyFilter] = useState<string>("all");
+  const [gradiFilter, setGradiFilter] = useState<"all" | "analyzed" | "pending">("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "faculty" | "subject">("newest");
 
   // Fetch cohort faculty to filter videos
   const cohortQ = useQuery({
@@ -698,68 +702,217 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
     refetchInterval: 10000,
   });
 
-  const allVideos = (allVideosQ.data?.videos ?? []).filter(v => cohortFacultyIds.size === 0 || cohortFacultyIds.has(v.facultyId));
-  const filtered = allVideos.filter(v => {
-    if (ratingFilter === "unrated") return v.status !== "manager_rated";
-    if (ratingFilter === "rated") return v.status === "manager_rated";
-    return true;
-  });
+  const allVideos = useMemo(
+    () => (allVideosQ.data?.videos ?? []).filter(v => cohortFacultyIds.size === 0 || cohortFacultyIds.has(v.facultyId)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allVideosQ.data, cohortQ.data],
+  );
+
+  // Derive unique subjects & faculty from queue videos
+  const uniqueSubjects = useMemo(() => {
+    const map = new Map<string, string>();
+    allVideos.forEach(v => { if (v.subjectId && v.subject) map.set(v.subjectId, v.subject); });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allVideos]);
+
+  const uniqueFaculty = useMemo(() => {
+    const map = new Map<string, string>();
+    allVideos.forEach(v => { if (v.facultyId && v.facultyName) map.set(v.facultyId, v.facultyName); });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allVideos]);
+
+  const filtered = useMemo(() => {
+    let list = allVideos.filter(v => {
+      if (ratingFilter === "unrated") return v.status !== "manager_rated";
+      if (ratingFilter === "rated")   return v.status === "manager_rated";
+      return true;
+    });
+    if (subjectFilter !== "all") list = list.filter(v => v.subjectId === subjectFilter);
+    if (facultyFilter !== "all") list = list.filter(v => v.facultyId === facultyFilter);
+    if (gradiFilter === "analyzed") list = list.filter(v => v.status === "gradi_done" || v.status === "manager_rated");
+    if (gradiFilter === "pending")  list = list.filter(v => v.status === "uploaded" || v.status === "analyzing");
+    return [...list].sort((a, b) => {
+      if (sortBy === "newest")  return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+      if (sortBy === "oldest")  return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
+      if (sortBy === "faculty") return (a.facultyName ?? "").localeCompare(b.facultyName ?? "");
+      if (sortBy === "subject") return (a.subject ?? "").localeCompare(b.subject ?? "");
+      return 0;
+    });
+  }, [allVideos, ratingFilter, subjectFilter, facultyFilter, gradiFilter, sortBy]);
+
+  const unratedCount  = allVideos.filter(v => v.status !== "manager_rated").length;
+  const ratedCount    = allVideos.filter(v => v.status === "manager_rated").length;
+  const hasActiveFilter = subjectFilter !== "all" || facultyFilter !== "all" || gradiFilter !== "all" || sortBy !== "newest";
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Scoring Queue</h2>
-        <span className="text-xs text-fg-muted">{allVideos.filter(v => v.status !== "manager_rated").length} videos need scoring</span>
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-lg font-semibold">Scoring Queue</h2>
+          <p className="text-[11px] text-fg-muted mt-0.5">
+            Showing <span className="font-medium text-fg">{filtered.length}</span> of {allVideos.length} videos
+            {unratedCount > 0 && <> · <span className="text-amber-400 font-medium">{unratedCount} unscored</span></>}
+          </p>
+        </div>
+        {hasActiveFilter && (
+          <button
+            onClick={() => { setSubjectFilter("all"); setFacultyFilter("all"); setGradiFilter("all"); setSortBy("newest"); }}
+            className="text-[11px] text-fg-muted border border-border rounded-full px-3 py-1 hover:text-fg hover:border-border-strong transition-colors"
+          >
+            ✕ Reset filters
+          </button>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Status pills row */}
+      <div className="flex items-center gap-2 flex-wrap">
         {(["unrated", "rated", "all"] as const).map(f => (
           <button key={f} onClick={() => setRatingFilter(f)}
             className={cn("px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors",
-              ratingFilter === f ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900" : "text-fg-muted border border-border hover:text-fg")}>
-            {f === "unrated" ? `Unscored (${allVideos.filter(v => v.status !== "manager_rated").length})` : f === "rated" ? `Scored (${allVideos.filter(v => v.status === "manager_rated").length})` : `All (${allVideos.length})`}
+              ratingFilter === f
+                ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                : "text-fg-muted border border-border hover:text-fg")}>
+            {f === "unrated" ? `Unscored (${unratedCount})` : f === "rated" ? `Scored (${ratedCount})` : `All (${allVideos.length})`}
           </button>
         ))}
       </div>
 
+      {/* Advanced filter bar */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border bg-bg-elev/30 px-4 py-3">
+        {/* Subject */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-fg-muted font-semibold whitespace-nowrap">Subject</span>
+          <select
+            value={subjectFilter}
+            onChange={e => setSubjectFilter(e.target.value)}
+            className="rounded-full border border-border bg-bg-elev text-xs text-fg px-3 py-1 outline-none focus:border-fg/30 cursor-pointer"
+          >
+            <option value="all">All subjects</option>
+            {uniqueSubjects.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name} ({allVideos.filter(v => v.subjectId === id).length})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="h-4 w-px bg-border" />
+
+        {/* Faculty */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-fg-muted font-semibold whitespace-nowrap">Faculty</span>
+          <select
+            value={facultyFilter}
+            onChange={e => setFacultyFilter(e.target.value)}
+            className="rounded-full border border-border bg-bg-elev text-xs text-fg px-3 py-1 outline-none focus:border-fg/30 cursor-pointer"
+          >
+            <option value="all">All faculty</option>
+            {uniqueFaculty.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name} ({allVideos.filter(v => v.facultyId === id).length})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="h-4 w-px bg-border" />
+
+        {/* Gradi analysis status */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-fg-muted font-semibold whitespace-nowrap">Gradi AI</span>
+          <div className="flex items-center gap-0.5 rounded-full border border-border bg-bg-elev p-0.5">
+            {([
+              { v: "all",      label: "Any" },
+              { v: "analyzed", label: "✓ Done" },
+              { v: "pending",  label: "⏳ Pending" },
+            ] as const).map(opt => (
+              <button
+                key={opt.v}
+                onClick={() => setGradiFilter(opt.v)}
+                className={cn(
+                  "px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-colors whitespace-nowrap",
+                  gradiFilter === opt.v
+                    ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                    : "text-fg-muted hover:text-fg"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="h-4 w-px bg-border" />
+
+        {/* Sort */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-fg-muted font-semibold whitespace-nowrap">Sort</span>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as typeof sortBy)}
+            className="rounded-full border border-border bg-bg-elev text-xs text-fg px-3 py-1 outline-none focus:border-fg/30 cursor-pointer"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="faculty">Faculty A→Z</option>
+            <option value="subject">Subject A→Z</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Video list */}
       {(allVideosQ.isLoading || cohortQ.isLoading) ? (
         <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-bg-elev/30 py-12 text-center text-sm text-fg-muted">
-          {ratingFilter === "unrated" ? "All videos scored! 🎉" : "No videos found"}
+          {!hasActiveFilter && ratingFilter === "unrated" ? "All videos scored! 🎉" : "No videos match the current filters"}
         </div>
       ) : (
         <div className="glass rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-[44px_1fr_120px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+          <div className="grid grid-cols-[44px_1fr_130px_90px_80px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
             <span></span>
             <span>Video</span>
             <span>Faculty</span>
+            <span>Subject</span>
             <span className="text-center">Status</span>
             <span className="text-center">Score</span>
           </div>
           {filtered.map(v => (
-            <div key={v.videoId} className="grid grid-cols-[44px_1fr_120px_70px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+            <div key={v.videoId} className="grid grid-cols-[44px_1fr_130px_90px_80px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+              {/* Thumbnail */}
               <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
-                {v.thumbnailUrl ? (
+                {v.thumbnailUrl
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                ) : <div className="w-full h-full flex items-center justify-center text-fg-dim"><Play className="h-3 w-3" /></div>}
+                  ? <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-fg-dim"><Play className="h-3 w-3" /></div>}
               </div>
+              {/* Title + date */}
               <div className="min-w-0">
                 <p className="text-sm font-medium text-fg truncate">{v.title}</p>
-                <p className="text-[10px] text-fg-muted">{v.subject} · {new Date(v.uploadedAt).toLocaleDateString()}</p>
+                <p className="text-[10px] text-fg-muted">{new Date(v.uploadedAt).toLocaleDateString()}</p>
               </div>
+              {/* Faculty */}
               <span className="text-[11px] text-fg-muted truncate">{v.facultyName ?? "—"}</span>
+              {/* Subject */}
+              <span className="text-[10px] text-fg-muted truncate">{v.subject ?? "—"}</span>
+              {/* Status */}
               <div className="text-center">
                 <span className={cn("inline-block px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium",
                   v.status === "manager_rated" ? "bg-emerald-500/10 text-emerald-400" :
-                  v.status === "gradi_done" ? "bg-blue-500/10 text-blue-400" :
-                  "bg-amber-500/10 text-amber-400"
-                )}>{v.status === "manager_rated" ? "done" : v.status === "gradi_done" ? "gradi" : v.status}</span>
+                  v.status === "gradi_done"    ? "bg-blue-500/10 text-blue-400" :
+                  v.status === "analyzing"     ? "bg-amber-500/10 text-amber-400" :
+                  "bg-fg/5 text-fg-muted"
+                )}>
+                  {v.status === "manager_rated" ? "done" : v.status === "gradi_done" ? "gradi ✓" : v.status}
+                </span>
               </div>
+              {/* Score button */}
               <div className="text-center">
-                <button onClick={() => setOpenVideoId(v.videoId)}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 hover:opacity-80 transition-opacity">
+                <button
+                  onClick={() => setOpenVideoId(v.videoId)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 hover:opacity-80 transition-opacity"
+                >
                   Score
                 </button>
               </div>
