@@ -84,8 +84,10 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
     ? { boardWork: ratings.boardWork, visualTLM: ratings.visualTLM, energy: ratings.energy, delivery: ratings.delivery, hook: ratings.hook, total: managerTotal }
     : data?.managerRatings?.[0] ?? null;
   const activeManagerScore = managerMode ? managerTotal : (displayedRating ? displayedRating.total : 0);
-  const gradiContrib = data?.analysis ? Math.round(data.analysis.gradiScore * 5 * 10) / 10 : 0;
-  const combinedTotal = Number((activeManagerScore + gradiContrib).toFixed(1));
+  // Gradi: raw 0–5 × 5 = 0–25 (half of 50). Manager: 5 params × 1–5 = 5–25 (half of 50). Combined ring = /50.
+  // For display purposes: show each score /50 by doubling (Gradi ×10, Manager ×2).
+  const gradiContrib = data?.analysis ? Math.round(data.analysis.gradiScore * 5 * 10) / 10 : 0; // 0–25 for ring
+  const combinedTotal = Number((activeManagerScore + gradiContrib).toFixed(1)); // /50 ring
   const ytId = data?.video ? extractYouTubeId(data.video.youtubeUrl) : null;
 
   return (
@@ -203,6 +205,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                 <div className="flex-1 space-y-3">
                                   <ScoreHalf key={"mgr-" + videoId} label="Manager Score" value={activeManagerScore} max={25} isEmpty={!managerMode && !displayedRating} emptyLabel="Not yet rated" />
                                   <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
+                                  {/* Note: Each half is /25, combined = /50 */}
                                 </div>
                               </div>
                             </div>
@@ -217,8 +220,8 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                   </div>
                                   <div className="flex items-center gap-3">
                                     <div className="text-right">
-                                      <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(managerTotal / 5) }}>{managerTotal}</div>
-                                      <div className="text-[10px] text-fg-muted">/ 25 pts</div>
+                                      <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(managerTotal / 5) }}>{managerTotal * 2}<span className="text-sm font-normal text-fg-muted">/50</span></div>
+                                      <div className="text-[10px] text-fg-muted">Manager score</div>
                                     </div>
                                     <AnimatePresence mode="wait">
                                       {saving && <motion.span key="sv" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-fg-muted"><Loader2 className="h-4 w-4 animate-spin" /></motion.span>}
@@ -241,7 +244,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                             {data.analysis && (
                               <div className="space-y-4">
                                 <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
-                                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 8 }}>Gradi AI &middot; {(data.analysis.gradiScore * 5).toFixed(1)}/25</p>
+                                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 8 }}>Gradi AI &middot; {(data.analysis.gradiScore * 10).toFixed(1)}/50</p>
                                   <p className="text-sm font-medium text-fg leading-snug">{data.analysis.oneLiner || data.analysis.scoreReason}</p>
                                   {data.analysis.summary && (
                                     <>
@@ -288,7 +291,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                     <h3 className="text-sm font-semibold">Manager Score Card</h3>
                                     <p className="text-[11px] text-fg-muted mt-0.5">{data.managerRatings[0]?.managerName}</p>
                                   </div>
-                                  <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(displayedRating.total / 5) }}>{displayedRating.total}<span className="text-sm font-normal text-fg-muted">/25</span></div>
+                                  <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(displayedRating.total / 5) }}>{displayedRating.total * 2}<span className="text-sm font-normal text-fg-muted">/50</span></div>
                                 </div>
                                 <div className="space-y-3">
                                   {MANAGER_PARAMS.map(p => <ParamBar key={p.key} label={p.label} value={(displayedRating as Record<string, unknown>)[p.key] as number ?? 0} delay={0} />)}

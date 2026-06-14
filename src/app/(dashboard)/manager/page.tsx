@@ -532,7 +532,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
       <div className="grid grid-cols-[44px_1fr_70px_70px_70px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
         <span></span>
         <span>Title</span>
-        <span className="text-center">Gradi /25</span>
+        <span className="text-center">Gradi /50</span>
         <span className="text-center">Manager</span>
         <span className="text-center">Status</span>
         <span className="text-center">Stats</span>
@@ -574,15 +574,14 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
               <div className="text-center">
                 {gradiScore > 0 ? (
                   <span className="text-mono text-sm font-semibold" style={{ color: gradiScore >= 4 ? "var(--emerald)" : gradiScore >= 3 ? "var(--amber)" : "var(--fg-muted)" }}>
-                    {(gradiScore * 5).toFixed(1)}<span className="text-[9px] text-fg-dim font-normal">/25</span>
+                    {(gradiScore * 10).toFixed(1)}<span className="text-[9px] text-fg-dim font-normal">/50</span>
                   </span>
                 ) : <span className="text-[10px] text-fg-dim">—</span>}
               </div>
 
-              {/* Manager */}
               <div className="text-center">
                 {v.status === "manager_rated" ? (
-                  <span className="text-mono text-sm font-semibold" style={{ color: "var(--emerald)" }}>✓</span>
+                  <span className="text-mono text-xs font-bold" style={{ color: "var(--emerald)" }}>✓</span>
                 ) : <span className="text-[10px] text-fg-dim">pending</span>}
               </div>
 

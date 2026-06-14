@@ -132,7 +132,7 @@ export default function LeaderboardPage() {
                 {selectedCohort === "March EduSkill" ? (
                   <span className="text-right">Installs</span>
                 ) : (
-                  <span className="text-right">Avg Score /25</span>
+                  <span className="text-right">Avg Score /50</span>
                 )}
                 <span className="text-right font-sans lowercase">view</span>
               </div>
@@ -164,7 +164,7 @@ export default function LeaderboardPage() {
                           <span className="text-mono text-sm font-bold text-emerald-400 text-right">{f.installs}</span>
                         ) : (
                           <span className="text-mono text-sm font-bold text-emerald-400 text-right">
-                            {f.avgGradiScore ? (f.avgGradiScore * 5).toFixed(1) : "—"}
+                            {f.avgGradiScore ? (f.avgGradiScore * 10).toFixed(1) : "—"}
                           </span>
                         )}
 
@@ -214,7 +214,7 @@ export default function LeaderboardPage() {
                 {selectedCohort === "March EduSkill" ? (
                   <span className="text-right">Installs</span>
                 ) : (
-                  <span className="text-right">Avg Score /25</span>
+                  <span className="text-right">Avg Score /50</span>
                 )}
                 <span className="text-right font-sans lowercase">view</span>
               </div>
@@ -244,7 +244,7 @@ export default function LeaderboardPage() {
                           <span className="text-mono text-sm font-bold text-rose-400 text-right">{f.installs}</span>
                         ) : (
                           <span className="text-mono text-sm font-bold text-rose-400 text-right">
-                            {f.avgGradiScore ? (f.avgGradiScore * 5).toFixed(1) : "—"}
+                            {f.avgGradiScore ? (f.avgGradiScore * 10).toFixed(1) : "—"}
                           </span>
                         )}
 
