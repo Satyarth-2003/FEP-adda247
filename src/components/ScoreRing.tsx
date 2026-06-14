@@ -30,7 +30,7 @@ export function ScoreRing({
     progress,
     (v) => circumference - v * circumference
   );
-  const numText = useTransform(progress, (v) => (v * score).toFixed(1));
+  const numText = useTransform(progress, (v) => (v * max).toFixed(1));
 
   useEffect(() => {
     const controls = animate(progress, pct, {

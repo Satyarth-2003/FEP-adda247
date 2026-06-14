@@ -133,16 +133,16 @@ function LiveVideoLog({ data, loading, refetch }: { data: LiveRow[]; loading: bo
       </div>
     );
   }
-
+ 
   if (data.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border py-16 text-center">
-        <p className="text-sm text-fg-muted">No rated videos yet.</p>
-        <p className="text-[11px] text-fg-dim mt-1">Rate videos in the Manager dashboard to populate this.</p>
+        <p className="text-sm text-fg-muted">No scored videos yet.</p>
+        <p className="text-[11px] text-fg-dim mt-1">Score videos in the Manager dashboard to populate this.</p>
       </div>
     );
   }
-
+ 
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -199,7 +199,7 @@ function LiveVideoLog({ data, loading, refetch }: { data: LiveRow[]; loading: bo
                         background: r.status === "manager_rated" ? "color-mix(in srgb, var(--emerald) 12%, transparent)" : r.status === "gradi_done" ? "rgba(167,139,250,0.12)" : r.status === "analyzing" ? "color-mix(in srgb, var(--amber) 12%, transparent)" : "var(--bg-elev)",
                         border: `1px solid ${r.status === "manager_rated" ? "color-mix(in srgb, var(--emerald) 25%, transparent)" : r.status === "gradi_done" ? "rgba(167,139,250,0.25)" : "var(--border)"}`,
                       }}>
-                        {r.status?.replace("_", " ") ?? "—"}
+                        {r.status === "manager_rated" ? "manager scored" : r.status?.replace("_", " ") ?? "—"}
                       </span>
                     </td>
                     <td style={{ padding: "6px 12px", textAlign: "center" }}>

@@ -25,18 +25,19 @@ const ddb = DynamoDBDocumentClient.from(client, {
 
 // ── Official Adda247 verticals ──
 const VERTICALS = [
-  { subjectId: "ssc",        name: "ADDA247 SSC TITANS",        description: "Staff Selection Commission (CGL, CHSL, MTS, GD)" },
-  { subjectId: "foundation", name: "ADDA247 FOUNDATION TITANS", description: "Class 6-12 academic foundation (CBSE/ICSE/State)" },
-  { subjectId: "neet",       name: "ADDA247 NEET TITANS",       description: "NEET UG medical entrance" },
-  { subjectId: "upsc",       name: "ADDA247 UPSC TITANS",       description: "Civil services, State PCS, UPPCS, BPSC" },
-  { subjectId: "banking",    name: "ADDA247 BANKING TITANS",    description: "IBPS, SBI, RBI and insurance exams" },
-  { subjectId: "railway",    name: "ADDA247 RAILWAY TITANS",    description: "RRB NTPC, ALP, Group D, JE" },
-  { subjectId: "teaching",   name: "ADDA247 TEACHING TITANS",   description: "CTET, TET, TGT, PGT, B.Ed" },
-  { subjectId: "cuet",       name: "ADDA247 CUET TITANS",       description: "CUET UG and PG entrance" },
-  { subjectId: "tech",       name: "ADDA247 TECH TITANS",       description: "GATE, ESE, ITI, JEE" },
-  { subjectId: "ugc-net",    name: "ADDA247 UGC NET TITANS",    description: "UGC NET, JRF preparation" },
-  { subjectId: "nursing",    name: "ADDA247 NURSING TITANS",    description: "Nursing entrance & AIIMS" },
+  { subjectId: "ssc",        name: "SSC",        description: "Staff Selection Commission (CGL, CHSL, MTS, GD)" },
+  { subjectId: "foundation", name: "Foundation", description: "Class 6-12 academic foundation (CBSE/ICSE/State)" },
+  { subjectId: "neet",       name: "NEET",       description: "NEET UG medical entrance" },
+  { subjectId: "upsc",       name: "UPSC",       description: "Civil services, State PCS, UPPCS, BPSC" },
+  { subjectId: "banking",    name: "Banking",    description: "IBPS, SBI, RBI and insurance exams" },
+  { subjectId: "railway",    name: "Railway",    description: "RRB NTPC, ALP, Group D, JE" },
+  { subjectId: "teaching",   name: "Teaching",   description: "CTET, TET, TGT, PGT, B.Ed" },
+  { subjectId: "cuet",       name: "CUET",       description: "CUET UG and PG entrance" },
+  { subjectId: "tech",       name: "Tech",       description: "GATE, ESE, ITI, JEE" },
+  { subjectId: "ugc-net",    name: "UGC NET",    description: "UGC NET, JRF preparation" },
+  { subjectId: "nursing",    name: "Nursing",    description: "Nursing entrance & AIIMS" },
 ];
+
 
 interface FacultySeed {
   name: string;

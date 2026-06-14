@@ -20,6 +20,8 @@ export interface User {
   trackingLink?: string;        // Full adjust tracking link
   passwordHash?: string;
   avatarUrl?: string;
+  age?: number;
+  dob?: string;
   createdAt: string;
 }
 

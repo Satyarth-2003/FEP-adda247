@@ -197,7 +197,7 @@ export function ProgramAnalytics({ subjects }: Props) {
               onChange={setStatusFilter}
               options={[
                 { value: "all", label: "All Status" },
-                { value: "manager_rated", label: "Manager Rated" },
+                { value: "manager_rated", label: "Manager Scored" },
                 { value: "gradi_done", label: "Gradi Done" },
                 { value: "analyzing", label: "Analyzing" },
               ]}
@@ -211,12 +211,12 @@ export function ProgramAnalytics({ subjects }: Props) {
           </button>
         </div>
       </motion.div>
-
+ 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatTile icon={Video} label="Videos" value={stats.total} />
         <StatTile icon={TrendingUp} label="Avg Gradi" value={stats.avgGradi.toFixed(2)} />
-        <StatTile icon={Activity} label="Manager Rated" value={`${stats.rated}/${stats.total}`} />
+        <StatTile icon={Activity} label="Manager Scored" value={`${stats.rated}/${stats.total}`} />
         <StatTile icon={Users} label="Faculty" value={stats.faculties} />
       </div>
 

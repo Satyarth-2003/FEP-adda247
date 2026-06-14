@@ -50,7 +50,7 @@ export function HeroStats({
           />
           <Stat
             icon={<BadgeCheck className="h-3.5 w-3.5" />}
-            label="Rated"
+            label="Scored"
             value={`${pctRated}%`}
             sub="by manager"
           />

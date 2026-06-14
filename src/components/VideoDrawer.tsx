@@ -14,6 +14,7 @@ interface VideoDrawerProps {
   managerMode?: boolean;
   managerId?: string;
   onRated?: () => void;
+  hideScoring?: boolean;
 }
 
 interface DrawerData {
@@ -23,10 +24,10 @@ interface DrawerData {
 }
 
 const EMPTY: Record<ManagerParamKey, number> = {
-  boardWork: 1, visualTLM: 1, energy: 1, delivery: 1, hook: 1,
+  boardWork: 0, visualTLM: 0, energy: 0, delivery: 0, hook: 0,
 };
 
-export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated }: VideoDrawerProps) {
+export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated, hideScoring }: VideoDrawerProps) {
   const [data, setData] = useState<DrawerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [ratings, setRatings] = useState<Record<ManagerParamKey, number>>(EMPTY);
@@ -48,7 +49,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated 
         if (managerMode && managerId) {
           const own = d.managerRatings?.find((r: ManagerRating) => r.managerId === managerId);
           if (own) {
-            setRatings({ boardWork: Number(own.boardWork)||1, visualTLM: Number(own.visualTLM)||1, energy: Number(own.energy)||1, delivery: Number(own.delivery)||1, hook: Number(own.hook)||1 });
+            setRatings({ boardWork: Number(own.boardWork) ?? 0, visualTLM: Number(own.visualTLM) ?? 0, energy: Number(own.energy) ?? 0, delivery: Number(own.delivery) ?? 0, hook: Number(own.hook) ?? 0 });
             setNotes(own.notes ?? "");
           }
         }
@@ -79,12 +80,13 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated 
   }
 
   const managerTotal = (ratings.boardWork??0)+(ratings.visualTLM??0)+(ratings.energy??0)+(ratings.delivery??0)+(ratings.hook??0);
-  const gradiContrib = data?.analysis ? Math.round(data.analysis.gradiScore * 5 * 10) / 10 : 0;
-  const combinedTotal = Number((managerTotal + gradiContrib).toFixed(1));
-  const ytId = data?.video ? extractYouTubeId(data.video.youtubeUrl) : null;
   const displayedRating = managerMode
     ? { boardWork: ratings.boardWork, visualTLM: ratings.visualTLM, energy: ratings.energy, delivery: ratings.delivery, hook: ratings.hook, total: managerTotal }
     : data?.managerRatings?.[0] ?? null;
+  const activeManagerScore = managerMode ? managerTotal : (displayedRating ? displayedRating.total : 0);
+  const gradiContrib = data?.analysis ? Math.round(data.analysis.gradiScore * 5 * 10) / 10 : 0;
+  const combinedTotal = Number((activeManagerScore + gradiContrib).toFixed(1));
+  const ytId = data?.video ? extractYouTubeId(data.video.youtubeUrl) : null;
 
   return (
     <Portal>
@@ -186,120 +188,129 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated 
                           </button>
                         )}
 
-                        {/* Combined score */}
-                        <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
-                          <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 16 }}>Combined Score</p>
-                          <div className="flex items-center gap-6">
-                            <ScoreRing key={`ring-${videoId}`} score={combinedTotal} max={50} size={108} stroke={8} label="/ 50" />
-                            <div className="flex-1 space-y-3">
-                              <ScoreHalf key={"mgr-" + videoId} label="Manager Score" value={managerTotal} max={25} isEmpty={!managerMode && !displayedRating} emptyLabel="Not yet rated" />
-                              <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
-                            </div>
+                        {hideScoring ? (
+                          <div className="glass rounded-xl p-6 text-center space-y-2 border border-border/50">
+                            <p className="text-xs font-semibold text-fg/80">March Cohort Video</p>
+                            <p className="text-[11px] text-fg-muted">Rating and scoring capabilities are not enabled for the March FEP cohort. Use the YouTube preview above to watch this video.</p>
                           </div>
-                        </div>
-
-                        {/* MANAGER RATING - FIRST (above Gradi) */}
-                        {managerMode && (
-                          <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
-                            <div className="flex items-center justify-between mb-5">
-                              <div>
-                                <h3 className="text-sm font-semibold">Video Score Card</h3>
-                                <p className="text-[11px] text-fg-muted mt-0.5">Score each parameter</p>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="text-right">
-                                  <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(managerTotal / 5) }}>{managerTotal}</div>
-                                  <div className="text-[10px] text-fg-muted">/ 25 pts</div>
+                        ) : (
+                          <>
+                            {/* Combined score */}
+                            <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
+                              <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 16 }}>Combined Score</p>
+                              <div className="flex items-center gap-6">
+                                <ScoreRing key={`ring-${videoId}`} score={combinedTotal} max={50} size={108} stroke={8} label="/ 50" />
+                                <div className="flex-1 space-y-3">
+                                  <ScoreHalf key={"mgr-" + videoId} label="Manager Score" value={activeManagerScore} max={25} isEmpty={!managerMode && !displayedRating} emptyLabel="Not yet rated" />
+                                  <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
                                 </div>
-                                <AnimatePresence mode="wait">
-                                  {saving && <motion.span key="sv" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-fg-muted"><Loader2 className="h-4 w-4 animate-spin" /></motion.span>}
-                                  {!saving && savedAt && <motion.span key="sd" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ color: "var(--emerald)" }}><Save className="h-4 w-4" /></motion.span>}
-                                </AnimatePresence>
                               </div>
                             </div>
-                            <div className="space-y-5">
-                              {MANAGER_PARAMS.map(p => <ScoringSlider key={p.key} label={p.label} desc={p.desc} value={ratings[p.key]??1} onChange={v => handleRating(p.key, v)} />)}
-                            </div>
-                            <div className="mt-5 pt-4 border-t border-border">
-                              <label style={{ display: "block", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--fg-muted)", marginBottom: 8 }}>Feedback notes</label>
-                              <textarea value={notes} onChange={e => handleNotes(e.target.value)} rows={3} placeholder="Share specific feedback for the faculty..."
-                                style={{ width: "100%", background: "var(--bg-elev)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "var(--fg)", outline: "none", resize: "vertical" }} />
-                            </div>
-                          </div>
-                        )}
 
-                        {/* GRADI ANALYSIS - after manager rating */}
-                        {data.analysis && (
-                          <div className="space-y-4">
-                            <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
-                              <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 8 }}>Gradi AI &middot; {(data.analysis.gradiScore * 5).toFixed(1)}/25</p>
-                              <p className="text-sm font-medium text-fg leading-snug">{data.analysis.oneLiner || data.analysis.scoreReason}</p>
-                              {data.analysis.summary && (
-                                <>
-                                  <AnimatePresence>
-                                    {showFullSummary && <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 text-xs text-fg-muted leading-relaxed overflow-hidden">{data.analysis.summary}</motion.p>}
-                                  </AnimatePresence>
-                                  <button onClick={() => setShowFullSummary(p => !p)} className="mt-2 flex items-center gap-1 text-[11px] text-fg-muted hover:text-fg transition-colors">
-                                    {showFullSummary ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                    {showFullSummary ? "Hide summary" : "Read full summary"}
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                            <div>
-                              <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 12 }}>Gradi Parameters</p>
-                              <div className="space-y-3">
-                                {GRADI_PARAMS.map((p, i) => { const v = (data.analysis as unknown as Record<string, unknown>)[p.key] as number; return <ParamBar key={p.key} label={p.label} value={v ?? 0} delay={i * 0.04} />; })}
-                              </div>
-                            </div>
-                            {(data.analysis.positives?.length ?? 0) > 0 && (
-                              <div>
-                                <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--emerald)", marginBottom: 8 }}>Strengths</p>
-                                <ul className="space-y-2">
-                                  {data.analysis.positives.map((pt, i) => <li key={i} className="flex gap-2 text-sm leading-snug" style={{ color: "var(--fg)" }}><span className="shrink-0 font-bold mt-0.5" style={{ color: "var(--emerald)" }}>+</span><span>{pt}</span></li>)}
-                                </ul>
+                            {/* MANAGER RATING - FIRST (above Gradi) */}
+                            {managerMode && (
+                              <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
+                                <div className="flex items-center justify-between mb-5">
+                                  <div>
+                                    <h3 className="text-sm font-semibold">Video Score Card</h3>
+                                    <p className="text-[11px] text-fg-muted mt-0.5">Score each parameter</p>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-right">
+                                      <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(managerTotal / 5) }}>{managerTotal}</div>
+                                      <div className="text-[10px] text-fg-muted">/ 25 pts</div>
+                                    </div>
+                                    <AnimatePresence mode="wait">
+                                      {saving && <motion.span key="sv" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-fg-muted"><Loader2 className="h-4 w-4 animate-spin" /></motion.span>}
+                                      {!saving && savedAt && <motion.span key="sd" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ color: "var(--emerald)" }}><Save className="h-4 w-4" /></motion.span>}
+                                    </AnimatePresence>
+                                  </div>
+                                </div>
+                                <div className="space-y-5">
+                                  {MANAGER_PARAMS.map(p => <ScoringSlider key={p.key} label={p.label} desc={p.desc} value={ratings[p.key]??1} onChange={v => handleRating(p.key, v)} />)}
+                                </div>
+                                <div className="mt-5 pt-4 border-t border-border">
+                                  <label style={{ display: "block", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--fg-muted)", marginBottom: 8 }}>Feedback notes</label>
+                                  <textarea value={notes} onChange={e => handleNotes(e.target.value)} rows={3} placeholder="Share specific feedback for the faculty..."
+                                    style={{ width: "100%", background: "var(--bg-elev)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "var(--fg)", outline: "none", resize: "vertical" }} />
+                                </div>
                               </div>
                             )}
-                            {(data.analysis.improvements?.length ?? 0) > 0 && (
-                              <div>
-                                <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--amber)", marginBottom: 8 }}>Areas for Improvement</p>
-                                <ul className="space-y-2">
-                                  {data.analysis.improvements.map((im, i) => <li key={i} className="flex gap-2 text-sm leading-snug" style={{ color: "var(--fg)" }}><span className="shrink-0 mt-0.5" style={{ color: "var(--amber)" }}>&rarr;</span><span>{im}</span></li>)}
-                                </ul>
+
+                            {/* GRADI ANALYSIS - after manager rating */}
+                            {data.analysis && (
+                              <div className="space-y-4">
+                                <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+                                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 8 }}>Gradi AI &middot; {(data.analysis.gradiScore * 5).toFixed(1)}/25</p>
+                                  <p className="text-sm font-medium text-fg leading-snug">{data.analysis.oneLiner || data.analysis.scoreReason}</p>
+                                  {data.analysis.summary && (
+                                    <>
+                                      <AnimatePresence>
+                                        {showFullSummary && <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 text-xs text-fg-muted leading-relaxed overflow-hidden">{data.analysis.summary}</motion.p>}
+                                      </AnimatePresence>
+                                      <button onClick={() => setShowFullSummary(p => !p)} className="mt-2 flex items-center gap-1 text-[11px] text-fg-muted hover:text-fg transition-colors">
+                                        {showFullSummary ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                        {showFullSummary ? "Hide summary" : "Read full summary"}
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                                <div>
+                                  <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 12 }}>Gradi Parameters</p>
+                                  <div className="space-y-3">
+                                    {GRADI_PARAMS.map((p, i) => { const v = (data.analysis as unknown as Record<string, unknown>)[p.key] as number; return <ParamBar key={p.key} label={p.label} value={v ?? 0} delay={i * 0.04} />; })}
+                                  </div>
+                                </div>
+                                {(data.analysis.positives?.length ?? 0) > 0 && (
+                                  <div>
+                                    <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--emerald)", marginBottom: 8 }}>Strengths</p>
+                                    <ul className="space-y-2">
+                                      {data.analysis.positives.map((pt, i) => <li key={i} className="flex gap-2 text-sm leading-snug" style={{ color: "var(--fg)" }}><span className="shrink-0 font-bold mt-0.5" style={{ color: "var(--emerald)" }}>+</span><span>{pt}</span></li>)}
+                                    </ul>
+                                  </div>
+                                )}
+                                {(data.analysis.improvements?.length ?? 0) > 0 && (
+                                  <div>
+                                    <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--amber)", marginBottom: 8 }}>Areas for Improvement</p>
+                                    <ul className="space-y-2">
+                                      {data.analysis.improvements.map((im, i) => <li key={i} className="flex gap-2 text-sm leading-snug" style={{ color: "var(--fg)" }}><span className="shrink-0 mt-0.5" style={{ color: "var(--amber)" }}>&rarr;</span><span>{im}</span></li>)}
+                                    </ul>
+                                  </div>
+                                )}
                               </div>
                             )}
-                          </div>
-                        )}
 
-                        {/* Faculty: received manager score */}
-                        {!managerMode && displayedRating && (
-                          <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <h3 className="text-sm font-semibold">Manager Score Card</h3>
-                                <p className="text-[11px] text-fg-muted mt-0.5">{data.managerRatings[0]?.managerName}</p>
-                              </div>
-                              <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(displayedRating.total / 5) }}>{displayedRating.total}<span className="text-sm font-normal text-fg-muted">/25</span></div>
-                            </div>
-                            <div className="space-y-3">
-                              {MANAGER_PARAMS.map(p => <ParamBar key={p.key} label={p.label} value={(displayedRating as Record<string, unknown>)[p.key] as number ?? 0} delay={0} />)}
-                            </div>
-                            {data.managerRatings[0]?.notes && (
-                              <div className="mt-4 pt-4 border-t border-border">
-                                <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--fg-muted)", marginBottom: 6 }}>Feedback</p>
-                                <p className="text-sm leading-relaxed" style={{ color: "var(--fg)" }}>{data.managerRatings[0].notes}</p>
+                            {/* Faculty: received manager score */}
+                            {!managerMode && displayedRating && (
+                              <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div>
+                                    <h3 className="text-sm font-semibold">Manager Score Card</h3>
+                                    <p className="text-[11px] text-fg-muted mt-0.5">{data.managerRatings[0]?.managerName}</p>
+                                  </div>
+                                  <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(displayedRating.total / 5) }}>{displayedRating.total}<span className="text-sm font-normal text-fg-muted">/25</span></div>
+                                </div>
+                                <div className="space-y-3">
+                                  {MANAGER_PARAMS.map(p => <ParamBar key={p.key} label={p.label} value={(displayedRating as Record<string, unknown>)[p.key] as number ?? 0} delay={0} />)}
+                                </div>
+                                {data.managerRatings[0]?.notes && (
+                                  <div className="mt-4 pt-4 border-t border-border">
+                                    <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--fg-muted)", marginBottom: 6 }}>Feedback</p>
+                                    <p className="text-sm leading-relaxed" style={{ color: "var(--fg)" }}>{data.managerRatings[0].notes}</p>
+                                  </div>
+                                )}
                               </div>
                             )}
-                          </div>
-                        )}
 
-                        {/* No Gradi yet */}
-                        {!data.analysis && (
-                          <div style={{ background: "var(--bg)", border: "1px dashed var(--border)", borderRadius: 12, padding: "24px", textAlign: "center" }}>
-                            <Loader2 className="h-5 w-5 animate-spin text-fg-muted mx-auto mb-3" />
-                            <p className="text-sm text-fg-muted">Gradi AI is analyzing this video</p>
-                            <p className="text-[11px] text-fg-dim mt-1">Usually takes 20-40 seconds.</p>
-                          </div>
+                            {/* No Gradi yet */}
+                            {!data.analysis && (
+                              <div style={{ background: "var(--bg)", border: "1px dashed var(--border)", borderRadius: 12, padding: "24px", textAlign: "center" }}>
+                                <Loader2 className="h-5 w-5 animate-spin text-fg-muted mx-auto mb-3" />
+                                <p className="text-sm text-fg-muted">Gradi AI is analyzing this video</p>
+                                <p className="text-[11px] text-fg-dim mt-1">Usually takes 20-40 seconds.</p>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -349,9 +360,9 @@ function ParamBar({ label, value, delay }: { label: string; value: number; delay
 }
 
 function ScoringSlider({ label, desc, value, onChange }: { label: string; desc: string; value: number; onChange: (v: number) => void }) {
-  const safeVal = typeof value === "number" && !isNaN(value) ? value : 1;
+  const safeVal = typeof value === "number" && !isNaN(value) ? value : 0;
   const color = scoreColor(safeVal);
-  const fillPct = Math.max(0, ((safeVal - 1) / 4) * 100);
+  const fillPct = Math.max(0, (safeVal / 5) * 100);
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -361,11 +372,11 @@ function ScoringSlider({ label, desc, value, onChange }: { label: string; desc: 
         </div>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 20, fontWeight: 700, color, minWidth: 40, textAlign: "right" }}>{(safeVal).toFixed(1)}</div>
       </div>
-      <input type="range" min={1} max={5} step={0.5} value={safeVal} onChange={e => onChange(Number(e.target.value))}
+      <input type="range" min={0} max={5} step={0.5} value={safeVal} onChange={e => onChange(Number(e.target.value))}
         className="param-slider w-full"
         style={{ background: `linear-gradient(to right, ${color} 0%, ${color} ${fillPct}%, var(--slider-track) ${fillPct}%, var(--slider-track) 100%)` }} />
       <div className="flex justify-between mt-1 px-0.5">
-        {[1,2,3,4,5].map(n => <span key={n} style={{ fontSize: 10, color: safeVal >= n ? color : "var(--fg-dim)", fontFamily: "var(--font-mono)", transition: "color 0.2s" }}>{n}</span>)}
+        {[0,1,2,3,4,5].map(n => <span key={n} style={{ fontSize: 10, color: safeVal >= n ? color : "var(--fg-dim)", fontFamily: "var(--font-mono)", transition: "color 0.2s" }}>{n}</span>)}
       </div>
     </div>
   );

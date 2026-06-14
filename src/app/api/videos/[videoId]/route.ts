@@ -55,3 +55,71 @@ export async function GET(
     managerRatings: (ratingsRes.Items ?? []) as ManagerRating[],
   });
 }
+
+// DELETE — Delete a video (and its analysis + ratings)
+export async function DELETE(
+  _req: Request,
+  ctx: { params: Promise<{ videoId: string }> }
+) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
+  const { videoId } = await ctx.params;
+
+  // 1. Find the video to get its facultyId
+  const scanRes = await ddb.send(
+    new ScanCommand({
+      TableName: TABLES.VIDEOS,
+      FilterExpression: "videoId = :v",
+      ExpressionAttributeValues: { ":v": videoId },
+    })
+  );
+
+  const video = scanRes.Items?.[0] as Video | undefined;
+  if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
+
+  // Faculty can only delete their own videos. Managers/admins can delete any.
+  if (user.role === "fep_faculty" && video.facultyId !== user.userId) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+
+  const { DeleteCommand } = await import("@aws-sdk/lib-dynamodb");
+
+  // 2. Delete the video item (composite key)
+  await ddb.send(
+    new DeleteCommand({
+      TableName: TABLES.VIDEOS,
+      Key: { facultyId: video.facultyId, videoId },
+    })
+  );
+
+  // 3. Delete from fep-gradi-analyses (simple key)
+  await ddb.send(
+    new DeleteCommand({
+      TableName: TABLES.ANALYSES,
+      Key: { videoId },
+    })
+  );
+
+  // 4. Delete from fep-manager-ratings (composite key, query & delete each)
+  const ratingsRes = await ddb.send(
+    new QueryCommand({
+      TableName: TABLES.RATINGS,
+      KeyConditionExpression: "videoId = :v",
+      ExpressionAttributeValues: { ":v": videoId },
+    })
+  );
+
+  const ratingsList = (ratingsRes.Items ?? []) as ManagerRating[];
+  for (const rating of ratingsList) {
+    await ddb.send(
+      new DeleteCommand({
+        TableName: TABLES.RATINGS,
+        Key: { videoId, managerId: rating.managerId },
+      })
+    );
+  }
+
+  return NextResponse.json({ success: true, message: "Video deleted successfully" });
+}
+

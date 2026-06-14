@@ -36,3 +36,55 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ users: items });
 }
+
+// PUT — Update user details (Name, Age, DOB, Subjects, Avatar/Profile Photo)
+export async function PUT(req: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
+  const body = await req.json();
+  const { userId, name, age, dob, subjects, avatarUrl } = body;
+
+  // Faculty can only update themselves. Managers/admins can update anyone.
+  const targetUserId = userId || user.userId;
+  if (user.role === "fep_faculty" && targetUserId !== user.userId) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+
+  const { UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
+
+  // Build update expression dynamically based on provided fields
+  const updateFields: Record<string, unknown> = {};
+  if (name !== undefined) updateFields.name = name;
+  if (age !== undefined) updateFields.age = Number(age);
+  if (dob !== undefined) updateFields.dob = dob;
+  if (subjects !== undefined) updateFields.subjects = subjects;
+  if (avatarUrl !== undefined) updateFields.avatarUrl = avatarUrl;
+
+  if (Object.keys(updateFields).length === 0) {
+    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+  }
+
+  const updateParts: string[] = [];
+  const expressionAttributeNames: Record<string, string> = {};
+  const expressionAttributeValues: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(updateFields)) {
+    updateParts.push(`#${key} = :${key}`);
+    expressionAttributeNames[`#${key}`] = key;
+    expressionAttributeValues[`:${key}`] = value;
+  }
+
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TABLES.USERS,
+      Key: { userId: targetUserId },
+      UpdateExpression: `SET ${updateParts.join(", ")}`,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: expressionAttributeValues,
+    })
+  );
+
+  return NextResponse.json({ success: true, message: "Profile updated successfully" });
+}
+

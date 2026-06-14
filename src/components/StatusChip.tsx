@@ -21,7 +21,7 @@ const meta: Record<
     color: "text-violet-400 bg-violet-400/10 border-violet-400/20",
   },
   manager_rated: {
-    label: "Manager Rated",
+    label: "Manager Scored",
     color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
   },
 };

@@ -57,7 +57,6 @@ export function TopNav({ userName, role }: TopNavProps) {
   const navItems = [
     { href: dashHref, label: "Dashboard", icon: LayoutDashboard },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    ...(role !== "fep_faculty" ? [{ href: "/archive", label: "Program Archive", icon: Archive }] : []),
     ...(role === "fep_admin" ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 
