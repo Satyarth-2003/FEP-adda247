@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   );
   const facultyUser = facultyUserRes.Item as User | undefined;
 
-  if (searchParams.get("scope") === "all" && (user.role === "eduskill_manager" || user.role === "eduskill_admin")) {
+  if (searchParams.get("scope") === "all") {
     return aggregateAll(searchParams.get("cohort") ?? "June EduSkill");
   }
 
