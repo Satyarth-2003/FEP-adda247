@@ -3,7 +3,7 @@ import { QueryCommand, ScanCommand, BatchGetCommand, GetCommand } from "@aws-sdk
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import type { GradiAnalysis, ManagerRating, User, Video } from "@/types";
-import { healStuckVideos } from "@/lib/gradi";
+import { processPendingQueue } from "@/lib/gradi";
 
 // Aggregate stats — for hero card and leaderboard
 export async function GET(req: Request) {
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     })
   );
   const videos = (videosRes.Items ?? []) as Video[];
-  healStuckVideos(videos);
+  processPendingQueue();
 
   if (videos.length === 0) {
     return NextResponse.json({
@@ -129,7 +129,7 @@ async function aggregateAll(cohort: string = "June EduSkill") {
   const users = (usersRes.Items ?? []) as User[];
   const videos = (videosRes.Items ?? []) as Video[];
   const analyses = (analysesRes.Items ?? []) as GradiAnalysis[];
-  healStuckVideos(videos);
+  processPendingQueue();
   const ratings = (ratingsRes.Items ?? []) as ManagerRating[];
   const aMap = new Map(analyses.map((a) => [a.videoId, a]));
 

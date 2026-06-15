@@ -10,7 +10,7 @@ import {
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import { extractYouTubeId, youtubeThumb } from "@/lib/utils";
-import { analyzeWithGradi, healStuckVideos } from "@/lib/gradi";
+import { analyzeWithGradi, processPendingQueue } from "@/lib/gradi";
 import type { Video } from "@/types";
 
 // GET — list videos. Faculty: own only. Manager: all (filterable).
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       })
     );
     const videos = r.Items ?? [];
-    healStuckVideos(videos);
+    processPendingQueue();
     return NextResponse.json({ videos });
   }
 
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
       })
     );
     const videos = r.Items ?? [];
-    healStuckVideos(videos);
+    processPendingQueue();
     return NextResponse.json({ videos });
   }
   if (subjectId) {
@@ -59,13 +59,13 @@ export async function GET(req: Request) {
       })
     );
     const videos = r.Items ?? [];
-    healStuckVideos(videos);
+    processPendingQueue();
     return NextResponse.json({ videos });
   }
 
   const r = await ddb.send(new ScanCommand({ TableName: TABLES.VIDEOS }));
   const videos = r.Items ?? [];
-  healStuckVideos(videos);
+  processPendingQueue();
   return NextResponse.json({ videos });
 }
 

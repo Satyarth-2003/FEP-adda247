@@ -62,43 +62,75 @@ export async function analyzeWithGradi(
   };
 }
 
-export async function healStuckVideos(videos: any[]) {
-  const now = new Date();
-  const stuckVideos = videos.filter(v => {
-    if (v.status !== "analyzing") return false;
-    if (!v.uploadedAt) return false;
-    const uploadedTime = new Date(v.uploadedAt);
-    const diffSeconds = (now.getTime() - uploadedTime.getTime()) / 1000;
-    return diffSeconds > 40;
-  });
+let isProcessingQueue = false;
 
-  if (stuckVideos.length === 0) return;
+export async function processPendingQueue() {
+  if (isProcessingQueue) {
+    console.log("[Queue] Queue processor is already active. Skipping duplicate trigger.");
+    return;
+  }
+  isProcessingQueue = true;
 
   const { after } = await import("next/server");
-  const { PutCommand, UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
+  const { ScanCommand, PutCommand, UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
   const { ddb, TABLES } = await import("./dynamodb");
 
   after(async () => {
-    for (const v of stuckVideos) {
-      console.log(`Auto-recovering skipped video analysis: ${v.videoId}`);
-      try {
-        const analysis = await analyzeWithGradi(v.youtubeUrl, v.videoId);
-        await ddb.send(
-          new PutCommand({ TableName: TABLES.ANALYSES, Item: analysis })
-        );
-        await ddb.send(
-          new UpdateCommand({
-            TableName: TABLES.VIDEOS,
-            Key: { facultyId: v.facultyId, videoId: v.videoId },
-            UpdateExpression: "SET #s = :s",
-            ExpressionAttributeNames: { "#s": "status" },
-            ExpressionAttributeValues: { ":s": "gradi_done" },
-          })
-        );
-        console.log(`Successfully completed recovery analysis for ${v.videoId}`);
-      } catch (err) {
-        console.error(`Gradi auto-recovery failed for ${v.videoId}:`, err);
+    try {
+      console.log("[Queue] Scanning for videos with pending analysis (status 'analyzing' or 'uploaded')...");
+      const videosRes = await ddb.send(new ScanCommand({
+        TableName: TABLES.VIDEOS,
+      }));
+      const allVideos = videosRes.Items ?? [];
+      const pendingVideos = allVideos.filter(v => v.status === "analyzing" || v.status === "uploaded");
+
+      if (pendingVideos.length === 0) {
+        console.log("[Queue] No pending videos found in database.");
+        isProcessingQueue = false;
+        return;
       }
+
+      console.log(`[Queue] Found ${pendingVideos.length} pending videos. Starting sequential processing...`);
+
+      for (const v of pendingVideos) {
+        console.log(`[Queue] Starting analysis for video: ${v.videoId} (${v.youtubeUrl})`);
+        try {
+          // Temporarily set to analyzing to mark it
+          await ddb.send(
+            new UpdateCommand({
+              TableName: TABLES.VIDEOS,
+              Key: { facultyId: v.facultyId, videoId: v.videoId },
+              UpdateExpression: "SET #s = :s",
+              ExpressionAttributeNames: { "#s": "status" },
+              ExpressionAttributeValues: { ":s": "analyzing" },
+            })
+          );
+
+          const analysis = await analyzeWithGradi(v.youtubeUrl, v.videoId);
+          await ddb.send(
+            new PutCommand({ TableName: TABLES.ANALYSES, Item: analysis })
+          );
+          await ddb.send(
+            new UpdateCommand({
+              TableName: TABLES.VIDEOS,
+              Key: { facultyId: v.facultyId, videoId: v.videoId },
+              UpdateExpression: "SET #s = :s",
+              ExpressionAttributeNames: { "#s": "status" },
+              ExpressionAttributeValues: { ":s": "gradi_done" },
+            })
+          );
+          console.log(`[Queue] Successfully completed analysis for video: ${v.videoId}`);
+        } catch (err) {
+          console.error(`[Queue] Gradi analysis failed for ${v.videoId}:`, err);
+        }
+        // Small cooldown to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    } catch (err) {
+      console.error("[Queue] Error in queue processor:", err);
+    } finally {
+      console.log("[Queue] Queue processor finished execution.");
+      isProcessingQueue = false;
     }
   });
 }
