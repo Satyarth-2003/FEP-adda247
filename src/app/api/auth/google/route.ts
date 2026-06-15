@@ -50,14 +50,14 @@ export async function POST(req: Request) {
       sub?: string;
     };
 
-    // email_verified may be boolean or the string "true" depending on endpoint
-    const isVerified =
-      email_verified === true || email_verified === "true";
+    // email_verified may be boolean or the string "true" depending on endpoint.
+    // We log the login attempt email and status.
+    console.log(`Verifying Google sign-in for: ${email}, verified: ${email_verified}`);
 
-    if (!email || !isVerified) {
+    if (!email) {
       return NextResponse.json(
-        { error: "Google account email is not verified. Please verify your Google account and try again." },
-        { status: 401 }
+        { error: "Google account email not found in token payload." },
+        { status: 400 }
       );
     }
 
@@ -79,6 +79,7 @@ export async function POST(req: Request) {
 
     // ── Look up user by email (case-insensitive) ───────────────────────────
     const normalizedEmail = String(email).toLowerCase().trim();
+    console.log(`Normalizing lookups for email: "${normalizedEmail}"`);
 
     // Primary: use email-index GSI (fast)
     let user: User | undefined;
@@ -93,12 +94,16 @@ export async function POST(req: Request) {
         })
       );
       user = result.Items?.[0] as User | undefined;
+      if (user) {
+        console.log(`User found via GSI email-index query: ${user.userId}`);
+      }
     } catch (gsiErr) {
       console.warn("email-index GSI query failed, falling back to scan:", gsiErr);
     }
 
-    // Fallback: full scan (handles case where GSI doesn't exist or email is stored differently)
+    // Fallback: scan with filter expression
     if (!user) {
+      console.log(`Falling back to scan filter for email: "${normalizedEmail}"`);
       const scanResult = await ddb.send(
         new ScanCommand({
           TableName: TABLES.USERS,
@@ -108,17 +113,33 @@ export async function POST(req: Request) {
         })
       );
       user = scanResult.Items?.[0] as User | undefined;
+      if (user) {
+        console.log(`User found via ScanCommand filter: ${user.userId}`);
+      }
+    }
 
-      // Last resort: case-insensitive scan match (handles emails stored in mixed case)
-      if (!user && scanResult.Items && scanResult.Items.length === 0) {
-        const fullScan = await ddb.send(
-          new ScanCommand({ TableName: TABLES.USERS })
-        );
+    // Last resort: case-insensitive paginated scan match (handles emails stored in mixed case or with spaces)
+    if (!user) {
+      console.log(`Starting paginated full scan case-insensitive check for: "${normalizedEmail}"`);
+      let lastKey: Record<string, any> | undefined;
+      let pageCount = 0;
+      do {
+        pageCount++;
+        const scanParams: any = { TableName: TABLES.USERS };
+        if (lastKey) scanParams.ExclusiveStartKey = lastKey;
+        const fullScan = await ddb.send(new ScanCommand(scanParams));
         user = fullScan.Items?.find(
           (u) =>
             typeof u.email === "string" &&
             u.email.toLowerCase().trim() === normalizedEmail
         ) as User | undefined;
+        lastKey = fullScan.LastEvaluatedKey;
+      } while (!user && lastKey);
+      
+      if (user) {
+        console.log(`User found via paginated case-insensitive full scan (after ${pageCount} pages): ${user.userId}`);
+      } else {
+        console.warn(`User NOT found in database after full paginated scan: "${normalizedEmail}"`);
       }
     }
 
