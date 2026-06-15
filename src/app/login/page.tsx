@@ -27,13 +27,13 @@ function CustomGrayLogo({ className = "w-24 h-24" }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      <polygon points="50,5 90,28 90,72 50,95 10,72 10,28" fill="#181a20" />
-      <polygon points="50,5 90,28 90,72 50,95 10,72 10,28" stroke="#8a8a93" strokeWidth="2" />
-      <path d="M32 25C32 21.6863 34.6863 19 38 19H44C47.3137 19 50 21.6863 50 25V75C50 78.3137 47.3137 81 44 81H38C34.6863 81 32 78.3137 32 75V25Z" fill="#5a5a63" />
-      <path d="M46 19H66C69.3137 19 72 21.6863 72 25C72 28.3137 69.3137 31 66 31H46V19Z" fill="#f5f5f7" />
-      <path d="M46 44H62C65.3137 44 68 46.6863 68 50C68 53.3137 65.3137 56 62 56H46V44Z" fill="#8a8a93" />
-      <path d="M46 69H66C69.3137 69 72 71.6863 72 75C72 78.3137 69.3137 81 66 81H46V69Z" fill="#f5f5f7" />
-      <path d="M72 40L74.5 45L80 45.5L76 49.5L77.2 55L72 52.2L66.8 55L68 49.5L64 45.5L69.5 45L72 40Z" fill="#f5f5f7" />
+      <polygon points="50,5 90,28 90,72 50,95 10,72 10,28" fill="var(--bg-elev)" />
+      <polygon points="50,5 90,28 90,72 50,95 10,72 10,28" stroke="var(--fg-muted)" strokeWidth="2" />
+      <path d="M32 25C32 21.6863 34.6863 19 38 19H44C47.3137 19 50 21.6863 50 25V75C50 78.3137 47.3137 81 44 81H38C34.6863 81 32 78.3137 32 75V25Z" fill="var(--fg-dim)" />
+      <path d="M46 19H66C69.3137 19 72 21.6863 72 25C72 28.3137 69.3137 31 66 31H46V19Z" fill="var(--fg)" />
+      <path d="M46 44H62C65.3137 44 68 46.6863 68 50C68 53.3137 65.3137 56 62 56H46V44Z" fill="var(--fg-muted)" />
+      <path d="M46 69H66C69.3137 69 72 71.6863 72 75C72 78.3137 69.3137 81 66 81H46V69Z" fill="var(--fg)" />
+      <path d="M72 40L74.5 45L80 45.5L76 49.5L77.2 55L72 52.2L66.8 55L68 49.5L64 45.5L69.5 45L72 40Z" fill="var(--fg)" />
     </svg>
   );
 }
@@ -43,8 +43,24 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [scriptReady, setScriptReady] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+  // Track active theme state
+  useEffect(() => {
+    const isLight = document.documentElement.getAttribute("data-theme") === "light";
+    setTheme(isLight ? "light" : "dark");
+
+    // Observe theme changes dynamically
+    const observer = new MutationObserver(() => {
+      const isLightNow = document.documentElement.getAttribute("data-theme") === "light";
+      setTheme(isLightNow ? "light" : "dark");
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleGoogleCallback = useCallback(
     async (response: { credential: string }) => {
@@ -84,9 +100,11 @@ export default function LoginPage() {
       });
       const container = document.getElementById("google-signin-btn");
       if (container) {
+        // Render Google Sign-in button with dynamic theme outline configuration
+        // Using "outline" mode ensures transparent iframe background to match container background color perfectly
         window.google?.accounts.id.renderButton(container, {
           type: "standard",
-          theme: "filled_blue",
+          theme: theme === "light" ? "outline" : "filled_black",
           size: "large",
           width: container.offsetWidth || 340,
           text: "continue_with",
@@ -122,7 +140,7 @@ export default function LoginPage() {
     return () => {
       script.remove();
     };
-  }, [googleClientId, handleGoogleCallback]);
+  }, [googleClientId, handleGoogleCallback, theme]);
 
   // Framer Motion staggered child animation setup
   const containerVariants = {
@@ -142,7 +160,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-[#090a0f] text-zinc-100 selection:bg-brand/20 overflow-hidden relative">
+    <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen bg-bg text-fg selection:bg-brand/20 overflow-hidden relative">
       {/* Floating Background Glow Blobs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <motion.div
@@ -178,11 +196,11 @@ export default function LoginPage() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="relative flex flex-col justify-between p-8 md:p-16 overflow-hidden border-r border-zinc-800 bg-[#12131a]/85 backdrop-blur-md z-10"
+        className="relative flex flex-col justify-between p-8 md:p-16 overflow-hidden border-r border-border bg-bg/85 backdrop-blur-md z-10"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px)
+            linear-gradient(var(--border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--border) 1px, transparent 1px)
           `,
           backgroundSize: "32px 32px"
         }}
@@ -194,11 +212,11 @@ export default function LoginPage() {
             transition={{ duration: 0.8, ease: "easeInOut" }}
             className="cursor-pointer"
           >
-            <CustomGrayLogo className="w-10 h-10 filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]" />
+            <CustomGrayLogo className="w-10 h-10 filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
           </motion.div>
           <div>
-            <div className="text-sm font-bold tracking-wider text-white leading-tight">EduSkill</div>
-            <div className="text-[10px] font-semibold tracking-widest text-zinc-400 uppercase leading-none">PROGRAM</div>
+            <div className="text-sm font-bold tracking-wider text-fg leading-tight">EduSkill</div>
+            <div className="text-[10px] font-semibold tracking-widest text-fg-muted uppercase leading-none">PROGRAM</div>
           </div>
         </motion.div>
 
@@ -216,30 +234,30 @@ export default function LoginPage() {
               initial={{ scaleY: 0 }}
               animate={{ scaleY: 1 }}
               transition={{ delay: 0.5, duration: 0.6 }}
-              className="w-1.5 h-16 bg-zinc-600 rounded-full self-stretch origin-top" 
+              className="w-1.5 h-16 bg-border-strong rounded-full self-stretch origin-top" 
             />
-            <h1 className="text-5xl md:text-6xl font-black tracking-tight text-white leading-none">
+            <h1 className="text-5xl md:text-6xl font-black tracking-tight text-fg leading-none">
               EduSkill
             </h1>
           </motion.div>
 
           <motion.h2
             variants={itemVariants}
-            className="text-xs font-bold tracking-widest text-zinc-400 uppercase mb-6"
+            className="text-xs font-bold tracking-widest text-fg-muted uppercase mb-6"
           >
             FACULTY EVALUATION & PERFORMANCE
           </motion.h2>
 
           <motion.p
             variants={itemVariants}
-            className="text-base text-zinc-400 italic mb-8 font-serif leading-relaxed"
+            className="text-base text-fg-muted italic mb-8 font-serif leading-relaxed"
           >
             &ldquo;Empowering educators, optimizing content.&rdquo;
           </motion.p>
 
           <motion.p
             variants={itemVariants}
-            className="text-sm text-zinc-400/80 leading-relaxed"
+            className="text-sm text-fg-muted/85 leading-relaxed"
           >
             Track and analyze video quality, faculty engagement, and feedback metrics in real-time.
           </motion.p>
@@ -260,18 +278,18 @@ export default function LoginPage() {
                   variants={itemVariants}
                   whileHover={{ 
                     scale: 1.03,
-                    borderColor: "rgba(255, 255, 255, 0.15)",
-                    backgroundColor: "rgba(255, 255, 255, 0.04)"
+                    borderColor: "var(--border-strong)",
+                    backgroundColor: "var(--glass-bg-s1)"
                   }}
-                  className="bg-white/[0.02] rounded-xl p-4 border border-zinc-800 transition-all duration-300 group cursor-pointer shadow-lg"
+                  className="bg-bg-card rounded-xl p-4 border border-border transition-all duration-300 group cursor-pointer shadow-lg"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="text-xl md:text-2xl font-black text-white group-hover:text-zinc-300 transition-colors duration-300">
+                    <div className="text-xl md:text-2xl font-black text-fg group-hover:text-fg-muted transition-colors duration-300">
                       {stat.val}
                     </div>
-                    <Icon className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                    <Icon className="h-4 w-4 text-fg-dim group-hover:text-fg transition-colors" />
                   </div>
-                  <div className="text-[9px] font-bold tracking-wider text-zinc-500 mt-1">
+                  <div className="text-[9px] font-bold tracking-wider text-fg-dim mt-1">
                     {stat.label}
                   </div>
                 </motion.div>
@@ -279,14 +297,14 @@ export default function LoginPage() {
             })}
           </div>
 
-          <motion.div variants={itemVariants} className="text-[11px] text-zinc-600">
+          <motion.div variants={itemVariants} className="text-[11px] text-fg-dim">
             &copy; 2026 EduSkill Program - Internal use only
           </motion.div>
         </div>
       </motion.div>
 
       {/* Right Column: Sign-in Form */}
-      <div className="flex flex-col justify-center items-center p-8 md:p-16 bg-[#0a0b10] z-10 relative">
+      <div className="flex flex-col justify-center items-center p-8 md:p-16 bg-bg-elev z-10 relative">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -300,13 +318,13 @@ export default function LoginPage() {
               transition={{ type: "spring", stiffness: 300 }}
               className="relative cursor-pointer"
             >
-              <CustomGrayLogo className="w-24 h-24 filter drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)]" />
+              <CustomGrayLogo className="w-24 h-24 filter drop-shadow-[0_4px_24px_rgba(0,0,0,0.15)]" />
             </motion.div>
           </div>
 
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold tracking-tight text-white">Sign in</h2>
-            <p className="mt-2 text-sm text-zinc-400">Use your company Google account to continue.</p>
+            <h2 className="text-2xl font-bold tracking-tight text-fg">Sign in</h2>
+            <p className="mt-2 text-sm text-fg-muted">Use your company Google account to continue.</p>
           </div>
 
           {/* Error display */}
@@ -325,21 +343,21 @@ export default function LoginPage() {
 
           {/* Google Sign-in Card Area */}
           <motion.div 
-            whileHover={{ boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.7)" }}
-            className="bg-[#12131a] rounded-2xl p-6 border border-zinc-800 shadow-2xl relative overflow-hidden transition-shadow duration-300"
+            whileHover={{ boxShadow: "0 20px 40px -15px var(--glass-shadow)" }}
+            className="bg-bg-card rounded-2xl p-6 border border-border shadow-2xl relative overflow-hidden transition-shadow duration-300"
           >
             <div className="flex flex-col items-center justify-center min-h-[60px] py-2">
               {loading ? (
                 <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-                  <span className="text-xs text-zinc-400 font-medium">Verifying account…</span>
+                  <Loader2 className="h-6 w-6 animate-spin text-fg-muted" />
+                  <span className="text-xs text-fg-muted font-medium">Verifying account…</span>
                 </div>
               ) : (
                 <div className="w-full flex flex-col items-center gap-3">
                   <div id="google-signin-btn" className="w-full flex justify-center" />
                   {!scriptReady && !error && (
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
-                      <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />
+                    <div className="flex items-center gap-2 text-xs text-fg-dim">
+                      <Loader2 className="h-3 w-3 animate-spin text-fg-muted" />
                       Loading authentication...
                     </div>
                   )}
@@ -353,12 +371,12 @@ export default function LoginPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="mt-8 pt-6 border-t border-zinc-800"
+            className="mt-8 pt-6 border-t border-border"
           >
-            <div className="flex gap-3 p-4 rounded-xl bg-white/[0.01] border border-zinc-800">
-              <ShieldCheck className="h-5 w-5 text-zinc-400 shrink-0" />
-              <div className="text-xs text-zinc-400 leading-relaxed">
-                <span className="font-semibold text-white">Authorized Access Only</span>
+            <div className="flex gap-3 p-4 rounded-xl bg-white/[0.01] border border-border">
+              <ShieldCheck className="h-5 w-5 text-fg-muted shrink-0" />
+              <div className="text-xs text-fg-muted leading-relaxed">
+                <span className="font-semibold text-fg">Authorized Access Only</span>
                 <p className="mt-1">
                   Access is restricted to registered EduSkill faculty, program managers, and system administrators.
                 </p>
