@@ -31,6 +31,13 @@ export default function LeaderboardPage() {
   const [showAllTop, setShowAllTop] = useState(false);
   const [showAllBottom, setShowAllBottom] = useState(false);
 
+  const meQ = useQuery({
+    queryKey: ["me"],
+    queryFn: () => fetch("/api/auth/me").then(r => r.json()),
+  });
+  const user = meQ.data?.user;
+  const isManager = user?.role === "eduskill_manager" || user?.role === "eduskill_admin";
+
   // Fetch March EduSkill stats
   const marchQ = useQuery<{ leaderboard: FacultyLeaderRow[] }>({
     queryKey: ["leaderboard-march"],
@@ -142,7 +149,7 @@ export default function LeaderboardPage() {
                   const idx = list.indexOf(f);
                   return (
                     <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
-                      <Link href={`/manager?facultyId=${f.userId}`} className={cn(
+                      <Link href={isManager ? `/manager?facultyId=${f.userId}` : `/faculty?facultyId=${f.userId}`} className={cn(
                         "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
                         selectedCohort === "March EduSkill" 
                           ? "grid-cols-[40px_1fr_100px_40px]" 
@@ -224,7 +231,7 @@ export default function LeaderboardPage() {
                   const idx = list.indexOf(f);
                   return (
                     <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
-                      <Link href={`/manager?facultyId=${f.userId}`} className={cn(
+                      <Link href={isManager ? `/manager?facultyId=${f.userId}` : `/faculty?facultyId=${f.userId}`} className={cn(
                         "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
                         selectedCohort === "March EduSkill" 
                           ? "grid-cols-[40px_1fr_100px_40px]" 
