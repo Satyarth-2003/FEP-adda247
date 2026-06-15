@@ -10,7 +10,7 @@ import {
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import { extractYouTubeId, youtubeThumb } from "@/lib/utils";
-import { analyzeWithGradi } from "@/lib/gradi";
+import { analyzeWithGradi, healStuckVideos } from "@/lib/gradi";
 import type { Video } from "@/types";
 
 // GET — list videos. Faculty: own only. Manager: all (filterable).
@@ -30,7 +30,9 @@ export async function GET(req: Request) {
         ExpressionAttributeValues: { ":f": user.userId },
       })
     );
-    return NextResponse.json({ videos: r.Items ?? [] });
+    const videos = r.Items ?? [];
+    healStuckVideos(videos);
+    return NextResponse.json({ videos });
   }
 
   // Manager
@@ -42,7 +44,9 @@ export async function GET(req: Request) {
         ExpressionAttributeValues: { ":f": facultyId },
       })
     );
-    return NextResponse.json({ videos: r.Items ?? [] });
+    const videos = r.Items ?? [];
+    healStuckVideos(videos);
+    return NextResponse.json({ videos });
   }
   if (subjectId) {
     const r = await ddb.send(
@@ -54,11 +58,15 @@ export async function GET(req: Request) {
         ScanIndexForward: false,
       })
     );
-    return NextResponse.json({ videos: r.Items ?? [] });
+    const videos = r.Items ?? [];
+    healStuckVideos(videos);
+    return NextResponse.json({ videos });
   }
 
   const r = await ddb.send(new ScanCommand({ TableName: TABLES.VIDEOS }));
-  return NextResponse.json({ videos: r.Items ?? [] });
+  const videos = r.Items ?? [];
+  healStuckVideos(videos);
+  return NextResponse.json({ videos });
 }
 
 // POST — Upload a video link (faculty for themselves, or manager on behalf of a faculty)

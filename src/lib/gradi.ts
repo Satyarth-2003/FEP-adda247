@@ -61,3 +61,44 @@ export async function analyzeWithGradi(
     analyzedAt: json.data?.timestamp ?? new Date().toISOString(),
   };
 }
+
+export async function healStuckVideos(videos: any[]) {
+  const now = new Date();
+  const stuckVideos = videos.filter(v => {
+    if (v.status !== "analyzing") return false;
+    if (!v.uploadedAt) return false;
+    const uploadedTime = new Date(v.uploadedAt);
+    const diffSeconds = (now.getTime() - uploadedTime.getTime()) / 1000;
+    return diffSeconds > 40;
+  });
+
+  if (stuckVideos.length === 0) return;
+
+  const { after } = await import("next/server");
+  const { PutCommand, UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
+  const { ddb, TABLES } = await import("./dynamodb");
+
+  after(async () => {
+    for (const v of stuckVideos) {
+      console.log(`Auto-recovering skipped video analysis: ${v.videoId}`);
+      try {
+        const analysis = await analyzeWithGradi(v.youtubeUrl, v.videoId);
+        await ddb.send(
+          new PutCommand({ TableName: TABLES.ANALYSES, Item: analysis })
+        );
+        await ddb.send(
+          new UpdateCommand({
+            TableName: TABLES.VIDEOS,
+            Key: { facultyId: v.facultyId, videoId: v.videoId },
+            UpdateExpression: "SET #s = :s",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: { ":s": "gradi_done" },
+          })
+        );
+        console.log(`Successfully completed recovery analysis for ${v.videoId}`);
+      } catch (err) {
+        console.error(`Gradi auto-recovery failed for ${v.videoId}:`, err);
+      }
+    }
+  });
+}
