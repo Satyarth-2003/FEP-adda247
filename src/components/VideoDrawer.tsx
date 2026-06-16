@@ -263,8 +263,8 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                 <ScoreRing key={`ring-${videoId}`} score={combinedTotal} max={combinedMax} size={108} stroke={8} label={combinedLabel} />
                                 <div className="flex-1 space-y-3">
                                   <ScoreHalf key={"mgr-" + videoId} label="Manager Score" value={activeManagerScore} max={25} isEmpty={!managerMode && !displayedRating} emptyLabel="Not yet rated" />
-                                  <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
-                                  {/* Note: Each half is /25, combined = /50 */}
+                                  <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={data?.analysis ? Math.round(data.analysis.gradiScore * 10 * 10) / 10 : 0} max={50} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
+                                  {/* Note: Manager is /25, Gradi is /50 (scaled for dashboard consistency) */}
                                 </div>
                               </div>
                             </div>
