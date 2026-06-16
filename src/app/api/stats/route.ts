@@ -208,14 +208,9 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
     const tokens = users.filter(u => u.adjustToken).map(u => u.adjustToken!);
     const adjustMap = new Map<string, { installs: number; clicks: number; sessions: number }>();
     
-    // Default mock data generation
+    // Default stats to 0 (real data only)
     users.forEach((u, i) => {
-      // Deterministic numbers for consistency
-      const nameHash = u.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const installs = (nameHash % 120) + 15;
-      const clicks = installs * 3 + (nameHash % 40);
-      const sessions = installs * 2 + (nameHash % 30);
-      adjustMap.set(u.email.toLowerCase().trim(), { installs, clicks, sessions });
+      adjustMap.set(u.email.toLowerCase().trim(), { installs: 0, clicks: 0, sessions: 0 });
     });
 
     if (tokens.length > 0 && process.env.ADJUST_API_TOKEN) {

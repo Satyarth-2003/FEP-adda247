@@ -1086,13 +1086,10 @@ function MarchEduSkillDashboard() {
     const prefix = email.split("@")[0].toLowerCase();
     const match = networks.find((n: any) => n.network.toLowerCase().includes(prefix));
     if (match) return match;
-    // Fallback to deterministic values based on email hash
-    const hash = email.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const installs = (hash % 120) + 15;
     return {
-      installs,
-      clicks: installs * 3 + (hash % 40),
-      sessions: installs * 2 + (hash % 30)
+      installs: 0,
+      clicks: 0,
+      sessions: 0
     };
   }
 
