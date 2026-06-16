@@ -290,7 +290,7 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
         const a = aMap.get(v.videoId);
         const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
         let r: ManagerRating | undefined;
-        if (loggedInUser && loggedInUser.role === "eduskill_manager") {
+        if (loggedInUser && (loggedInUser.role === "eduskill_manager" || loggedInUser.role === "eduskill_admin")) {
           r = vRatings.find((rt) => rt.managerId === loggedInUser.userId);
         }
         if (!r && vRatings.length > 0) {
