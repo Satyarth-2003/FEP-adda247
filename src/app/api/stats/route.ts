@@ -1,13 +1,31 @@
 import { NextResponse, after } from "next/server";
-import { QueryCommand, ScanCommand, BatchGetCommand, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  QueryCommand,
+  ScanCommand,
+  BatchGetCommand,
+  GetCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import type { GradiAnalysis, ManagerRating, User, Video, JWTPayload } from "@/types";
 import { processPendingQueue } from "@/lib/gradi";
 import { extractYouTubeId } from "@/lib/utils";
 
-const YT_API_KEY = "AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs";
+const YT_API_KEY =
+  process.env.YOUTUBE_API_KEY || "AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs";
 
+// ── Cached YT stats row shape ──────────────────────────────────────
+interface YTStatsRow {
+  facultyId: string;
+  totalViews: number;
+  totalLikes: number;
+  subscribers: number;
+  channelId?: string;
+  syncedAt?: string;
+}
+
+// ── Self-healing: fill missing duration/thumbnail for videos ──────
 async function fetchYouTubeMetadata(youtubeUrl: string) {
   const ytId = extractYouTubeId(youtubeUrl);
   if (!ytId) return null;
@@ -32,7 +50,11 @@ async function fetchYouTubeMetadata(youtubeUrl: string) {
     return {
       title: snippet.title || "",
       duration,
-      thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url || "",
+      thumbnailUrl:
+        snippet.thumbnails?.maxres?.url ||
+        snippet.thumbnails?.high?.url ||
+        snippet.thumbnails?.default?.url ||
+        "",
       views: Number(stats.viewCount || 0),
       likes: Number(stats.likeCount || 0),
     };
@@ -43,135 +65,76 @@ async function fetchYouTubeMetadata(youtubeUrl: string) {
 }
 
 function triggerSelfHealing(videos: Video[]) {
-  const missing = videos.filter(v => !v.duration && v.youtubeUrl);
+  const missing = videos.filter((v) => !v.duration && v.youtubeUrl);
   if (missing.length === 0) return;
   after(async () => {
     try {
-      console.log(`[Self-healing] Found ${missing.length} videos lacking duration. Healing...`);
+      console.log(
+        `[Self-healing] ${missing.length} videos lacking duration. Healing...`
+      );
       for (const v of missing) {
         const metadata = await fetchYouTubeMetadata(v.youtubeUrl);
         if (metadata) {
-          await ddb.send(new UpdateCommand({
-            TableName: TABLES.VIDEOS,
-            Key: { facultyId: v.facultyId, videoId: v.videoId },
-            UpdateExpression: "SET duration = :dur, thumbnailUrl = :thumb, views = :views, likes = :likes",
-            ExpressionAttributeValues: {
-              ":dur": metadata.duration,
-              ":thumb": metadata.thumbnailUrl || v.thumbnailUrl || "",
-              ":views": metadata.views,
-              ":likes": metadata.likes,
-            }
-          }));
-          console.log(`[Self-healing] Healed video ${v.videoId} with duration ${metadata.duration}`);
+          await ddb.send(
+            new UpdateCommand({
+              TableName: TABLES.VIDEOS,
+              Key: { facultyId: v.facultyId, videoId: v.videoId },
+              UpdateExpression:
+                "SET duration = :dur, thumbnailUrl = :thumb, #views = :views, likes = :likes",
+              ExpressionAttributeNames: { "#views": "views" },
+              ExpressionAttributeValues: {
+                ":dur": metadata.duration,
+                ":thumb": metadata.thumbnailUrl || v.thumbnailUrl || "",
+                ":views": metadata.views,
+                ":likes": metadata.likes,
+              },
+            })
+          );
         }
       }
     } catch (err) {
-      console.error("[Self-healing] Error in background worker:", err);
+      console.error("[Self-healing] Error:", err);
     }
   });
 }
 
-interface LiveVideoStats {
-  views: number;
-  likes: number;
-  comments: number;
-  channelId: string;
-}
-
-async function fetchLiveStatsForVideos(videoUrls: string[]): Promise<{
-  videoStats: Record<string, LiveVideoStats>;
-  channelSubs: Record<string, number>;
-}> {
-  const videoStats: Record<string, LiveVideoStats> = {};
-  const channelSubs: Record<string, number> = {};
-
-  const ytIdsMap = new Map<string, string>();
-  const ytIds: string[] = [];
-
-  for (const url of videoUrls) {
-    const id = extractYouTubeId(url);
-    if (id) {
-      ytIdsMap.set(url, id);
-      ytIds.push(id);
-    }
-  }
-
-  if (ytIds.length === 0) return { videoStats, channelSubs };
-
+// ── Read cached per-faculty YT stats from fep-yt-stats ────────────
+async function getCachedYTStats(facultyId: string): Promise<YTStatsRow | null> {
   try {
-    const channelIdsSet = new Set<string>();
-
-    for (let i = 0; i < ytIds.length; i += 50) {
-      const batch = ytIds.slice(i, i + 50);
-      const res = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${batch.join(",")}&key=${YT_API_KEY}`
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-      for (const item of data.items || []) {
-        const id = item.id;
-        const stats = item.statistics || {};
-        const snippet = item.snippet || {};
-        const channelId = snippet.channelId || "";
-        
-        videoStats[id] = {
-          views: Number(stats.viewCount || 0),
-          likes: Number(stats.likeCount || 0),
-          comments: Number(stats.commentCount || 0),
-          channelId,
-        };
-
-        if (channelId) {
-          channelIdsSet.add(channelId);
-        }
-      }
-    }
-
-    const channelIds = Array.from(channelIdsSet);
-    for (let i = 0; i < channelIds.length; i += 50) {
-      const batch = channelIds.slice(i, i + 50);
-      const res = await fetch(
-        `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${batch.join(",")}&key=${YT_API_KEY}`
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-      for (const item of data.items || []) {
-        const id = item.id;
-        const stats = item.statistics || {};
-        channelSubs[id] = Number(stats.subscriberCount || 0);
-      }
-    }
-  } catch (err) {
-    console.error("fetchLiveStatsForVideos error:", err);
+    const res = await ddb.send(
+      new GetCommand({ TableName: TABLES.YT_STATS, Key: { facultyId } })
+    );
+    return (res.Item as YTStatsRow) ?? null;
+  } catch {
+    return null;
   }
-
-  return { videoStats, channelSubs };
 }
 
-// Aggregate stats — for hero card and leaderboard
+// ── Main GET — aggregate stats ─────────────────────────────────────
 export async function GET(req: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const facultyId = searchParams.get("facultyId") ?? user.userId;
 
-  // Faculty: own stats only. Manager: any.
+  // Faculty: own stats only. Manager/Admin: any.
   if (user.role === "eduskill_faculty" && facultyId !== user.userId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
   // Fetch target faculty user details
   const facultyUserRes = await ddb.send(
-    new GetCommand({
-      TableName: TABLES.USERS,
-      Key: { userId: facultyId },
-    })
+    new GetCommand({ TableName: TABLES.USERS, Key: { userId: facultyId } })
   );
   const facultyUser = facultyUserRes.Item as User | undefined;
 
   if (searchParams.get("scope") === "all") {
-    return aggregateAll(searchParams.get("cohort") ?? "June EduSkill", user);
+    return aggregateAll(
+      searchParams.get("cohort") ?? "June EduSkill",
+      user
+    );
   }
 
   const videosRes = await ddb.send(
@@ -188,51 +151,30 @@ export async function GET(req: Request) {
   if (videos.length === 0) {
     return NextResponse.json({
       facultyId,
+      facultyName: facultyUser?.name || "Unknown Faculty",
+      facultyEmail: facultyUser?.email || "",
+      cohort: facultyUser?.cohort || "June EduSkill",
+      age: facultyUser?.age,
+      dob: facultyUser?.dob,
+      subjects: facultyUser?.subjects || [],
+      avatarUrl: facultyUser?.avatarUrl,
       totalVideos: 0,
       avgGradiScore: 0,
       pctRatedByManager: 0,
+      totalViews: 0,
+      totalLikes: 0,
+      subscribers: 0,
+      ytStatsSyncedAt: null,
       bySubject: {},
       videos: [],
-      subscribers: 0,
     });
   }
 
-  // Fetch live stats for faculty videos
-  const validUrls = videos.map(v => v.youtubeUrl).filter((url): url is string => typeof url === "string");
-  const { videoStats, channelSubs } = await fetchLiveStatsForVideos(validUrls);
+  // ── Read cached YouTube stats (synced hourly by /api/youtube-sync) ──
+  const ytCache = await getCachedYTStats(facultyId);
 
-  // Update DB if out of sync, and use live values
-  const updatedVideos = videos.map(v => {
-    const ytId = v.youtubeUrl ? extractYouTubeId(v.youtubeUrl) : null;
-    const live = ytId ? videoStats[ytId] : null;
-    if (live) {
-      if (v.views !== live.views || v.likes !== live.likes) {
-        ddb.send(new UpdateCommand({
-          TableName: TABLES.VIDEOS,
-          Key: { facultyId: v.facultyId, videoId: v.videoId },
-          UpdateExpression: "SET #views = :v, likes = :l",
-          ExpressionAttributeNames: { "#views": "views" },
-          ExpressionAttributeValues: { ":v": live.views, ":l": live.likes }
-        })).catch(e => console.error("Out-of-sync stat update failed:", e));
-      }
-      return { ...v, views: live.views, likes: live.likes };
-    }
-    return v;
-  });
-
-  // Get first channel ID to check subscriber count
-  let channelId = "";
-  for (const v of updatedVideos) {
-    const ytId = v.youtubeUrl ? extractYouTubeId(v.youtubeUrl) : null;
-    const live = ytId ? videoStats[ytId] : null;
-    if (live && live.channelId) {
-      channelId = live.channelId;
-      break;
-    }
-  }
-  const liveSubs = channelId ? (channelSubs[channelId] || 0) : 0;
-
-  const keys = updatedVideos.map((v) => ({ videoId: v.videoId }));
+  // ── Gradi analyses ──────────────────────────────────────────────
+  const keys = videos.map((v) => ({ videoId: v.videoId }));
   const analysisChunks: GradiAnalysis[] = [];
   for (let i = 0; i < keys.length; i += 100) {
     const chunk = keys.slice(i, i + 100);
@@ -247,9 +189,10 @@ export async function GET(req: Request) {
   }
 
   const analysisMap = new Map(analysisChunks.map((a) => [a.videoId, a]));
-
-  const ratedCount = updatedVideos.filter((v) => v.status === "manager_rated").length;
-  const scores = analysisChunks.map((a) => a.gradiScore).filter((n) => n > 0);
+  const ratedCount = videos.filter((v) => v.status === "manager_rated").length;
+  const scores = analysisChunks
+    .map((a) => a.gradiScore)
+    .filter((n) => n > 0);
   const avg =
     scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
@@ -257,7 +200,7 @@ export async function GET(req: Request) {
     string,
     { count: number; avgScore: number; videos: Video[] }
   > = {};
-  for (const v of updatedVideos) {
+  for (const v of videos) {
     const sid = v.subjectId || "unknown";
     if (!bySubject[sid]) bySubject[sid] = { count: 0, avgScore: 0, videos: [] };
     bySubject[sid].count++;
@@ -279,92 +222,83 @@ export async function GET(req: Request) {
     dob: facultyUser?.dob,
     subjects: facultyUser?.subjects || [],
     avatarUrl: facultyUser?.avatarUrl,
-    totalVideos: updatedVideos.length,
+    totalVideos: videos.length,
     avgGradiScore: Number(avg.toFixed(2)),
     pctRatedByManager:
-      updatedVideos.length > 0 ? Math.round((ratedCount / updatedVideos.length) * 100) : 0,
+      videos.length > 0
+        ? Math.round((ratedCount / videos.length) * 100)
+        : 0,
+    // ── YouTube aggregate stats (from hourly cache) ──
+    totalViews: ytCache?.totalViews ?? 0,
+    totalLikes: ytCache?.totalLikes ?? 0,
+    subscribers: ytCache?.subscribers ?? 0,
+    ytStatsSyncedAt: ytCache?.syncedAt ?? null,
     bySubject,
-    videos: updatedVideos.map((v) => ({
+    videos: videos.map((v) => ({
       ...v,
       analysis: analysisMap.get(v.videoId) ?? null,
     })),
-    subscribers: liveSubs,
   });
 }
 
-async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWTPayload) {
-  const [usersRes, videosRes, analysesRes, ratingsRes] = await Promise.all([
-    ddb.send(
-      new ScanCommand({
-        TableName: TABLES.USERS,
-        FilterExpression: "#r = :r AND cohort = :c",
-        ExpressionAttributeNames: { "#r": "role" },
-        ExpressionAttributeValues: { ":r": "eduskill_faculty", ":c": cohort },
-      })
-    ),
-    ddb.send(new ScanCommand({ TableName: TABLES.VIDEOS })),
-    ddb.send(new ScanCommand({ TableName: TABLES.ANALYSES })),
-    ddb.send(new ScanCommand({ TableName: TABLES.RATINGS })),
-  ]);
+// ── aggregateAll — leaderboard / manager view ─────────────────────
+async function aggregateAll(
+  cohort: string = "June EduSkill",
+  loggedInUser?: JWTPayload
+) {
+  const [usersRes, videosRes, analysesRes, ratingsRes, ytStatsRes] =
+    await Promise.all([
+      ddb.send(
+        new ScanCommand({
+          TableName: TABLES.USERS,
+          FilterExpression: "#r = :r AND cohort = :c",
+          ExpressionAttributeNames: { "#r": "role" },
+          ExpressionAttributeValues: {
+            ":r": "eduskill_faculty",
+            ":c": cohort,
+          },
+        })
+      ),
+      ddb.send(new ScanCommand({ TableName: TABLES.VIDEOS })),
+      ddb.send(new ScanCommand({ TableName: TABLES.ANALYSES })),
+      ddb.send(new ScanCommand({ TableName: TABLES.RATINGS })),
+      // Read full YT stats cache table in one scan
+      ddb.send(new ScanCommand({ TableName: TABLES.YT_STATS })),
+    ]);
 
   const users = (usersRes.Items ?? []) as User[];
   const videos = (videosRes.Items ?? []) as Video[];
   const analyses = (analysesRes.Items ?? []) as GradiAnalysis[];
+  const ratings = (ratingsRes.Items ?? []) as ManagerRating[];
+  const ytStatsRows = (ytStatsRes.Items ?? []) as YTStatsRow[];
+
   processPendingQueue();
   triggerSelfHealing(videos);
-  const ratings = (ratingsRes.Items ?? []) as ManagerRating[];
+
   const aMap = new Map(analyses.map((a) => [a.videoId, a]));
 
-  // ── FETCH LIVE YOUTUBE STATS FOR LEADERBOARD VIDEOS ──
-  const cohortVideos = videos.filter(v => users.some(u => u.userId === v.facultyId));
-  const videoUrls = cohortVideos.map(v => v.youtubeUrl).filter((url): url is string => typeof url === "string");
-  const { videoStats, channelSubs } = await fetchLiveStatsForVideos(videoUrls);
+  // ── Build YT stats lookup by facultyId ─────────────────────────
+  const ytMap = new Map<string, YTStatsRow>(
+    ytStatsRows.map((row) => [row.facultyId, row])
+  );
 
-  // Helper to get live sum of views, likes, and channel subscriber count
-  function getUserLiveStats(userVideos: Video[]) {
-    let views = 0;
-    let likes = 0;
-    let channelId = "";
-
-    for (const v of userVideos) {
-      const ytId = v.youtubeUrl ? extractYouTubeId(v.youtubeUrl) : null;
-      const live = ytId ? videoStats[ytId] : null;
-      if (live) {
-        views += live.views;
-        likes += live.likes;
-        if (!channelId && live.channelId) {
-          channelId = live.channelId;
-        }
-
-        // Background update if DynamoDB is out of sync
-        if (v.views !== live.views || v.likes !== live.likes) {
-          ddb.send(new UpdateCommand({
-            TableName: TABLES.VIDEOS,
-            Key: { facultyId: v.facultyId, videoId: v.videoId },
-            UpdateExpression: "SET #views = :v, likes = :l",
-            ExpressionAttributeNames: { "#views": "views" },
-            ExpressionAttributeValues: { ":v": live.views, ":l": live.likes }
-          })).catch(e => console.error("Out-of-sync stat update failed:", e));
-        }
-      } else {
-        views += (v.views || 0);
-        likes += (v.likes || 0);
-      }
-    }
-
-    const subs = channelId ? (channelSubs[channelId] || 0) : 0;
-    return { views, likes, subs };
-  }
-
-  let leaderboard: any[] = [];
+  let leaderboard: unknown[] = [];
 
   if (cohort === "March EduSkill") {
     // Fetch from Adjust
-    const tokens = users.filter(u => u.adjustToken).map(u => u.adjustToken!);
-    const adjustMap = new Map<string, { installs: number; clicks: number; sessions: number }>();
-    
+    const tokens = users
+      .filter((u) => u.adjustToken)
+      .map((u) => u.adjustToken!);
+    const adjustMap = new Map<
+      string,
+      { installs: number; clicks: number; sessions: number }
+    >();
     users.forEach((u) => {
-      adjustMap.set(u.email.toLowerCase().trim(), { installs: 0, clicks: 0, sessions: 0 });
+      adjustMap.set(u.email.toLowerCase().trim(), {
+        installs: 0,
+        clicks: 0,
+        sessions: 0,
+      });
     });
 
     if (tokens.length > 0 && process.env.ADJUST_API_TOKEN) {
@@ -379,20 +313,30 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
           date_period: datePeriod,
         });
         params.set("tracker_token__in", tokens.join(","));
-        const res = await fetch(`https://dash.adjust.com/control-center/reports-service/report?${params.toString()}`, {
-          headers: { "Authorization": `Bearer ${process.env.ADJUST_API_TOKEN}`, "Accept": "application/json" }
-        });
+        const res = await fetch(
+          `https://dash.adjust.com/control-center/reports-service/report?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.ADJUST_API_TOKEN}`,
+              Accept: "application/json",
+            },
+          }
+        );
         if (res.ok) {
           const data = await res.json();
           const rows = data.rows ?? [];
           for (const row of rows) {
-            const network = (row.network as string || "").toLowerCase();
-            const matchingUser = users.find(u => network.includes(u.email.split("@")[0].toLowerCase()));
+            const network = (
+              (row.network as string) || ""
+            ).toLowerCase();
+            const matchingUser = users.find((u) =>
+              network.includes(u.email.split("@")[0].toLowerCase())
+            );
             if (matchingUser) {
               adjustMap.set(matchingUser.email.toLowerCase().trim(), {
                 installs: Number(row.installs || 0),
                 clicks: Number(row.clicks || 0),
-                sessions: Number(row.sessions || 0)
+                sessions: Number(row.sessions || 0),
               });
             }
           }
@@ -405,8 +349,12 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
     leaderboard = users.map((u) => {
       const own = videos.filter((v) => v.facultyId === u.userId);
       const emailClean = u.email.toLowerCase().trim();
-      const adjust = adjustMap.get(emailClean) ?? { installs: 0, clicks: 0, sessions: 0 };
-      const live = getUserLiveStats(own);
+      const adjust = adjustMap.get(emailClean) ?? {
+        installs: 0,
+        clicks: 0,
+        sessions: 0,
+      };
+      const yt = ytMap.get(u.userId);
 
       return {
         userId: u.userId,
@@ -415,13 +363,17 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
         subjects: u.subjects,
         videoCount: own.length,
         installs: adjust.installs,
-        views: live.views,
-        subscribersGained: live.subs,
+        views: yt?.totalViews ?? 0,
+        likes: yt?.totalLikes ?? 0,
+        subscribersGained: yt?.subscribers ?? 0,
         avatarUrl: u.avatarUrl,
         avgGradiScore: 0,
+        ytStatsSyncedAt: yt?.syncedAt ?? null,
       };
     });
-    leaderboard.sort((a, b) => b.installs - a.installs);
+    (leaderboard as { installs: number }[]).sort(
+      (a, b) => b.installs - a.installs
+    );
   } else {
     leaderboard = users.map((u) => {
       const own = videos.filter((v) => v.facultyId === u.userId);
@@ -429,13 +381,19 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
         .map((v) => aMap.get(v.videoId)?.gradiScore || 0)
         .filter((n) => n > 0);
       const avg =
-        scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+        scores.length > 0
+          ? scores.reduce((a, b) => a + b, 0) / scores.length
+          : 0;
 
       const combinedScores = own.map((v) => {
         const a = aMap.get(v.videoId);
         const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
         let r: ManagerRating | undefined;
-        if (loggedInUser && (loggedInUser.role === "eduskill_manager" || loggedInUser.role === "eduskill_admin")) {
+        if (
+          loggedInUser &&
+          (loggedInUser.role === "eduskill_manager" ||
+            loggedInUser.role === "eduskill_admin")
+        ) {
           r = vRatings.find((rt) => rt.managerId === loggedInUser.userId);
         }
         if (!r && vRatings.length > 0) {
@@ -446,7 +404,12 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
         const managerScore = r ? r.total : 0;
         return gradiContrib + managerScore;
       });
-      const avgCombined = combinedScores.length > 0 ? combinedScores.reduce((a, b) => a + b, 0) / combinedScores.length : 0;
+      const avgCombined =
+        combinedScores.length > 0
+          ? combinedScores.reduce((a, b) => a + b, 0) / combinedScores.length
+          : 0;
+
+      const yt = ytMap.get(u.userId);
 
       return {
         userId: u.userId,
@@ -456,14 +419,23 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
         videoCount: own.length,
         avgGradiScore: Number(avg.toFixed(2)),
         avgCombinedScore: Number(avgCombined.toFixed(2)),
+        totalViews: yt?.totalViews ?? 0,
+        totalLikes: yt?.totalLikes ?? 0,
+        subscribers: yt?.subscribers ?? 0,
+        ytStatsSyncedAt: yt?.syncedAt ?? null,
+        avatarUrl: u.avatarUrl,
       };
     });
-    leaderboard.sort((a, b) => b.avgCombinedScore - a.avgCombinedScore);
+    (leaderboard as { avgCombinedScore: number }[]).sort(
+      (a, b) => b.avgCombinedScore - a.avgCombinedScore
+    );
   }
 
-  // Per-subject aggregate (radar)
-  const subjectAgg: Record<string, { keys: string[]; sums: number[]; n: number }> =
-    {};
+  // ── Per-subject radar aggregate ────────────────────────────────
+  const subjectAgg: Record<
+    string,
+    { keys: string[]; sums: number[]; n: number }
+  > = {};
   const ratingKeys = [
     "ratingClarity",
     "ratingDepth",

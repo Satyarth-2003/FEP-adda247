@@ -1,7 +1,13 @@
 "use client";
 import { motion } from "framer-motion";
 import { ScoreRing } from "./ScoreRing";
-import { TrendingUp, Video, BadgeCheck } from "lucide-react";
+import { TrendingUp, Video, BadgeCheck, Eye, ThumbsUp, Users } from "lucide-react";
+
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toString();
+}
 
 interface HeroStatsProps {
   name: string;
@@ -9,6 +15,11 @@ interface HeroStatsProps {
   totalVideos: number;
   pctRated: number;
   trendDelta?: number;
+  // YouTube aggregate stats
+  totalViews?: number;
+  totalLikes?: number;
+  subscribers?: number;
+  ytStatsSyncedAt?: string | null;
 }
 
 export function HeroStats({
@@ -17,7 +28,13 @@ export function HeroStats({
   totalVideos,
   pctRated,
   trendDelta = 0,
+  totalViews = 0,
+  totalLikes = 0,
+  subscribers = 0,
+  ytStatsSyncedAt,
 }: HeroStatsProps) {
+  const hasCachedStats = totalViews > 0 || totalLikes > 0 || subscribers > 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -26,6 +43,7 @@ export function HeroStats({
       className="glass-strong rounded-2xl p-6 md:p-8"
     >
       <div className="flex flex-col md:flex-row md:items-center gap-8">
+        {/* Score ring + name */}
         <div className="flex items-center gap-6">
           <ScoreRing score={avgScore} size={120} stroke={8} label="GRADI AVG" />
           <div>
@@ -38,10 +56,16 @@ export function HeroStats({
             <p className="mt-1 text-sm text-fg-muted">
               Here&apos;s how your content is performing.
             </p>
+            {ytStatsSyncedAt && (
+              <p className="mt-1 text-[10px] text-fg-dim">
+                YT stats synced {new Date(ytStatsSyncedAt).toLocaleTimeString()}
+              </p>
+            )}
           </div>
         </div>
 
-        <div className="flex-1 grid grid-cols-3 gap-3">
+        {/* Stats grid */}
+        <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <Stat
             icon={<Video className="h-3.5 w-3.5" />}
             label="Videos"
@@ -61,8 +85,40 @@ export function HeroStats({
             sub="vs last week"
             tone={trendDelta >= 0 ? "emerald" : "rose"}
           />
+          <Stat
+            icon={<Eye className="h-3.5 w-3.5" />}
+            label="Total Views"
+            value={hasCachedStats ? formatCount(totalViews) : "—"}
+            sub="across all videos"
+            tone="blue"
+            loading={!hasCachedStats}
+          />
+          <Stat
+            icon={<Users className="h-3.5 w-3.5" />}
+            label="Subscribers"
+            value={hasCachedStats ? formatCount(subscribers) : "—"}
+            sub="channel subs"
+            tone="violet"
+            loading={!hasCachedStats}
+          />
         </div>
       </div>
+
+      {/* Likes row — subtle secondary strip */}
+      {hasCachedStats && totalLikes > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3"
+        >
+          <ThumbsUp className="h-3 w-3 text-fg-dim" />
+          <span className="text-[11px] text-fg-dim">
+            <span className="font-semibold text-fg">{formatCount(totalLikes)}</span>
+            {" "}total likes across all videos
+          </span>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
@@ -73,13 +129,23 @@ function Stat({
   value,
   sub,
   tone,
+  loading = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub: string;
-  tone?: "emerald" | "rose";
+  tone?: "emerald" | "rose" | "blue" | "violet";
+  loading?: boolean;
 }) {
+  const colorMap: Record<string, string> = {
+    emerald: "var(--emerald)",
+    rose: "var(--rose)",
+    blue: "#60a5fa",
+    violet: "#a78bfa",
+  };
+  const color = tone ? colorMap[tone] : "var(--fg)";
+
   return (
     <motion.div
       whileHover={{ y: -2 }}
@@ -91,16 +157,13 @@ function Stat({
       </div>
       <div
         className="mt-2 text-mono text-2xl font-semibold tracking-tight"
-        style={{
-          color:
-            tone === "emerald"
-              ? "var(--emerald)"
-              : tone === "rose"
-                ? "var(--rose)"
-                : "var(--fg)",
-        }}
+        style={{ color: loading ? "var(--fg-dim)" : color }}
       >
-        {value}
+        {loading ? (
+          <span className="text-base animate-pulse text-fg-dim">syncing…</span>
+        ) : (
+          value
+        )}
       </div>
       <div className="mt-0.5 text-[11px] text-fg-dim">{sub}</div>
     </motion.div>

@@ -85,6 +85,15 @@ const tables = [
     ],
     BillingMode: "PAY_PER_REQUEST" as const,
   },
+  {
+    // Per-faculty YouTube aggregate cache — updated hourly by /api/youtube-sync
+    TableName: "fep-yt-stats",
+    KeySchema: [{ AttributeName: "facultyId", KeyType: "HASH" as const }],
+    AttributeDefinitions: [
+      { AttributeName: "facultyId", AttributeType: "S" as const },
+    ],
+    BillingMode: "PAY_PER_REQUEST" as const,
+  },
 ];
 
 async function tableExists(name: string): Promise<boolean> {

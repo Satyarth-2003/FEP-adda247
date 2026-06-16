@@ -22,4 +22,5 @@ export const TABLES = {
   ANALYSES: "fep-gradi-analyses",
   RATINGS: "fep-manager-ratings",
   SUBJECTS: "fep-subjects",
+  YT_STATS: "fep-yt-stats",   // per-faculty YouTube aggregate cache (synced hourly)
 } as const;

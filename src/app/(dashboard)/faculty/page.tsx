@@ -22,6 +22,11 @@ interface FacultyStats {
   dob?: string;
   subjects?: string[];
   avatarUrl?: string;
+  // YouTube aggregate stats (synced hourly)
+  totalViews?: number;
+  totalLikes?: number;
+  subscribers?: number;
+  ytStatsSyncedAt?: string | null;
   bySubject: Record<string, { count: number; avgScore: number; videos: Video[] }>;
   videos: (Video & { analysis?: GradiAnalysis | null })[];
 }
@@ -217,6 +222,10 @@ export default function FacultyDashboard() {
           totalVideos={stats?.totalVideos ?? 0}
           pctRated={stats?.pctRatedByManager ?? 0}
           trendDelta={0}
+          totalViews={stats?.totalViews ?? 0}
+          totalLikes={stats?.totalLikes ?? 0}
+          subscribers={stats?.subscribers ?? 0}
+          ytStatsSyncedAt={stats?.ytStatsSyncedAt}
         />
       )}
 
