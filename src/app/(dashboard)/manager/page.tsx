@@ -1019,6 +1019,13 @@ function MarchEduSkillDashboard() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
 
+  const aggQ = useQuery({
+    queryKey: ["aggregate", "March EduSkill"],
+    queryFn: async (): Promise<any> =>
+      (await fetch(`/api/stats?scope=all&cohort=${encodeURIComponent("March EduSkill")}`)).json(),
+    refetchInterval: 8000,
+  });
+
   useEffect(() => {
     if (urlFacultyId) {
       setSelectedFaculty(urlFacultyId);
@@ -1110,23 +1117,13 @@ function MarchEduSkillDashboard() {
   const videos = videosQ.data?.videos ?? [];
 
   const leaderboardRows = useMemo(() => {
-    return filteredFaculty.map(f => {
-      const stats = getFacultyStats(f.email);
-      // Filter videos for this faculty member specifically from the videosQ cache or query if necessary
-      const own = videos.filter(v => v.facultyId === f.userId);
-      const mockViews = stats.installs * 14 + f.name.split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 200;
-      const views = own.length > 0 ? mockViews : stats.installs * 12 + 150;
-      const subscribersGained = Math.floor(stats.installs * 0.4) + Math.floor(views * 0.02);
-      return {
-        ...f,
-        installs: stats.installs,
-        clicks: stats.clicks,
-        sessions: stats.sessions,
-        views,
-        subscribersGained,
-      };
-    }).sort((a, b) => b.installs - a.installs);
-  }, [filteredFaculty, networks, videos]);
+    const list = aggQ.data?.leaderboard ?? [];
+    return list.filter((r: any) => {
+      const matchSearch = search ? r.name.toLowerCase().includes(search.toLowerCase()) || r.email.toLowerCase().includes(search.toLowerCase()) : true;
+      const matchSub = subjectFilter === "all" || (r.subjects || []).includes(subjectFilter);
+      return matchSearch && matchSub;
+    }).sort((a: any, b: any) => b.installs - a.installs);
+  }, [aggQ.data, search, subjectFilter]);
 
   async function handleSaveProfile() {
     setSavingProfile(true);
@@ -1231,7 +1228,7 @@ function MarchEduSkillDashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {leaderboardRows.map((row, i) => {
+              {leaderboardRows.map((row: any, i: number) => {
                 const isSelected = selectedFaculty === row.userId;
                 return (
                   <motion.button
@@ -1401,7 +1398,8 @@ function MarchEduSkillDashboard() {
               {(() => {
                 const stats = getFacultyStats(selectedFacultyData.email);
                 const mockViews = stats.installs * 14 + selectedFacultyData.name.split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 200;
-                const views = videos.length > 0 ? mockViews : stats.installs * 12 + 150;
+                const realViews = videos.reduce((acc: number, v: any) => acc + (v.views || 0), 0);
+                const views = realViews > 0 ? realViews : (videos.length > 0 ? mockViews : stats.installs * 12 + 150);
                 const subscribersGained = Math.floor(stats.installs * 0.4) + Math.floor(views * 0.02);
                 
                 return (

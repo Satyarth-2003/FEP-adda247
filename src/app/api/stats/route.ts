@@ -260,7 +260,8 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
       
       const nameHash = u.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
       const mockViews = adjust.installs * 14 + (nameHash % 200);
-      const views = own.length > 0 ? mockViews : 0;
+      const realViews = own.reduce((acc, v) => acc + (v.views || 0), 0);
+      const views = realViews > 0 ? realViews : (own.length > 0 ? mockViews : 0);
       const subscribersGained = Math.floor(adjust.installs * 0.4) + Math.floor(views * 0.02);
 
       return {
@@ -272,6 +273,7 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
         installs: adjust.installs,
         views,
         subscribersGained,
+        avatarUrl: u.avatarUrl,
         avgGradiScore: 0,
       };
     });
