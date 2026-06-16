@@ -32,7 +32,7 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
     if (ytId) {
       setFetchingTitle(true);
       try {
-        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ytId}&key=AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs`);
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ytId}&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY ?? ""}`);
         const data = await res.json();
         if (data.items?.[0]?.snippet?.title) {
           setTitle(data.items[0].snippet.title);

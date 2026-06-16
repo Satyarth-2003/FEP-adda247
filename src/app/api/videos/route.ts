@@ -169,7 +169,7 @@ export async function POST(req: Request) {
     }
   }
 }
-const YT_API_KEY = "AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs";
+const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
 
   async function fetchYouTubeMetadata(youtubeUrl: string) {
     const ytId = extractYouTubeId(youtubeUrl);

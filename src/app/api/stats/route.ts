@@ -12,8 +12,8 @@ import type { GradiAnalysis, ManagerRating, User, Video, JWTPayload } from "@/ty
 import { processPendingQueue } from "@/lib/gradi";
 import { extractYouTubeId } from "@/lib/utils";
 
-const YT_API_KEY =
-  process.env.YOUTUBE_API_KEY || "AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs";
+const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
+
 
 // ── Cached YT stats row shape ──────────────────────────────────────
 interface YTStatsRow {

@@ -4,7 +4,8 @@ import { ddb, TABLES } from "@/lib/dynamodb";
 import { extractYouTubeId } from "@/lib/utils";
 import type { Video } from "@/types";
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY || "AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs";
+const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
+
 const YT_STATS_TABLE = "fep-yt-stats";
 
 export const dynamic = "force-dynamic";
