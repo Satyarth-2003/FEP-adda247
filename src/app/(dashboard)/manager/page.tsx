@@ -175,7 +175,7 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 md:py-10">
+    <div className="mx-auto max-w-[1400px] w-full px-6 py-6 h-[calc(100vh-64px)] flex flex-col overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -241,6 +241,7 @@ export default function ManagerDashboard() {
         {view === "analytics" ? (
           <motion.div
             key="analytics"
+            className="flex-1 overflow-y-auto min-h-0 pr-1 no-scrollbar"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -251,6 +252,7 @@ export default function ManagerDashboard() {
         ) : view === "cohorts" ? (
           <motion.div
             key="cohorts"
+            className="flex-1 overflow-y-auto min-h-0 pr-1 no-scrollbar"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -261,6 +263,7 @@ export default function ManagerDashboard() {
         ) : view === "rating" ? (
           <motion.div
             key="rating"
+            className="flex-1 min-h-0 overflow-hidden flex flex-col"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -271,6 +274,7 @@ export default function ManagerDashboard() {
         ) : (
           <motion.div
             key="roster"
+            className="flex-1 min-h-0 overflow-hidden flex flex-col"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -280,7 +284,7 @@ export default function ManagerDashboard() {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8"
+              className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4 shrink-0"
             >
         <div className="glass-strong lg:col-span-2 rounded-2xl p-5 flex items-center gap-5">
           <div>
@@ -307,10 +311,10 @@ export default function ManagerDashboard() {
         />
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 flex-1 min-h-0 overflow-hidden">
         {/* Left: leaderboard */}
-        <div>
-          <div className="mb-3 flex items-center gap-2">
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="mb-3 flex items-center gap-2 shrink-0">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-fg-muted" />
               <input
@@ -334,7 +338,8 @@ export default function ManagerDashboard() {
             </select>
           </div>
 
-          {aggQ.isLoading ? (
+          <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2 no-scrollbar">
+            {aggQ.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
@@ -354,9 +359,10 @@ export default function ManagerDashboard() {
             />
           )}
         </div>
+        </div>
 
         {/* Right: detail or aggregate radars */}
-        <div>
+        <div className="h-full overflow-y-auto pr-1 no-scrollbar">
           {selectedFaculty && selectedFacultyRow ? (
             <motion.div
               key={selectedFaculty}
@@ -744,7 +750,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
   const hasActiveFilter = subjectFilter !== "all" || facultyFilter !== "all" || gradiFilter !== "all" || sortBy !== "newest";
 
   return (
-    <div className="space-y-4">
+    <div className="flex-1 min-h-0 overflow-hidden flex flex-col space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
@@ -868,7 +874,8 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
           {!hasActiveFilter && ratingFilter === "unrated" ? "All videos scored! 🎉" : "No videos match the current filters"}
         </div>
       ) : (
-        <div className="glass rounded-2xl overflow-hidden">
+        <div className="flex-1 overflow-y-auto min-h-0 pr-1 no-scrollbar">
+          <div className="glass rounded-2xl overflow-hidden">
           <div className="grid grid-cols-[44px_1fr_130px_90px_80px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
             <span></span>
             <span>Video</span>
@@ -917,6 +924,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
               </div>
             </div>
           ))}
+        </div>
         </div>
       )}
 
@@ -1217,7 +1225,7 @@ function MarchEduSkillDashboard() {
             </select>
           </div>
 
-          <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2">
+          <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2 no-scrollbar">
             {cohortQ.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -1278,7 +1286,7 @@ function MarchEduSkillDashboard() {
         </div>
 
         {/* RIGHT: Detail pane */}
-        <div className="h-full overflow-y-auto pr-1">
+        <div className="h-full overflow-y-auto pr-1 no-scrollbar">
           {selectedFaculty && selectedFacultyData ? (
             <div className="space-y-5">
               {/* Profile Card & Editor */}

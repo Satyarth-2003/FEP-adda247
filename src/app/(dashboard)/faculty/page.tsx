@@ -300,7 +300,7 @@ export default function FacultyDashboard() {
                   {/* Customizable Subjects */}
                   <div className="sm:col-span-3 space-y-2">
                     <label className="text-[11px] font-medium text-fg-muted uppercase tracking-wider block">Custom Subjects Selection</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 rounded-xl border border-border bg-bg-elev/20 p-3 max-h-[160px] overflow-y-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 rounded-xl border border-border bg-bg-elev/20 p-3 max-h-[160px] overflow-y-auto no-scrollbar">
                       {subjects.map((s) => {
                         const isChecked = editSubjects.includes(s.subjectId);
                         return (
@@ -440,7 +440,7 @@ export default function FacultyDashboard() {
                       )}
 
                       {weeklyVideos.length > 0 && (
-                        <div className="pt-2 border-t border-border/60 space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+                        <div className="pt-2 border-t border-border/60 space-y-1.5 max-h-[120px] overflow-y-auto pr-1 no-scrollbar">
                           <p className="text-[9px] uppercase tracking-wider text-fg-dim font-bold">This week's uploads</p>
                           {weeklyVideos.map(v => {
                             const valid = isAbove5Mins(v.duration);

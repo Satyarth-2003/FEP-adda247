@@ -102,9 +102,30 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  if (!extractYouTubeId(youtubeUrl)) {
+  const newYtId = extractYouTubeId(youtubeUrl);
+  if (!newYtId) {
     return NextResponse.json(
       { error: "Invalid YouTube URL" },
+      { status: 400 }
+    );
+  }
+
+  // Prevent uploading the same video twice
+  const scanRes = await ddb.send(
+    new ScanCommand({
+      TableName: TABLES.VIDEOS,
+      ProjectionExpression: "youtubeUrl",
+    })
+  );
+  const existingVideos = (scanRes.Items ?? []) as { youtubeUrl: string }[];
+  const isDuplicate = existingVideos.some((v) => {
+    const existingId = extractYouTubeId(v.youtubeUrl);
+    return existingId === newYtId;
+  });
+
+  if (isDuplicate) {
+    return NextResponse.json(
+      { error: "This video has already been uploaded." },
       { status: 400 }
     );
   }

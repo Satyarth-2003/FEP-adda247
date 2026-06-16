@@ -39,6 +39,7 @@ export interface Video {
   facultyName?: string;
   views?: number;
   likes?: number;
+  comments?: number;
 }
 
 export interface GradiAnalysis {
