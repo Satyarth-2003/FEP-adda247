@@ -131,10 +131,9 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
   // For display purposes: show each score /50 by doubling (Gradi ×10, Manager ×2).
   const gradiContrib = data?.analysis ? Math.round(data.analysis.gradiScore * 5 * 10) / 10 : 0; // 0–25 for ring
 
-  const hasManagerRating = managerMode || !!displayedRating;
-  const combinedTotal = hasManagerRating ? Number((activeManagerScore + gradiContrib).toFixed(1)) : gradiContrib;
-  const combinedMax = hasManagerRating ? 50 : 25;
-  const combinedLabel = hasManagerRating ? "/ 50" : "/ 25";
+  const combinedTotal = Number((activeManagerScore + gradiContrib).toFixed(1));
+  const combinedMax = 50;
+  const combinedLabel = "/ 50";
 
   const ytId = data?.video ? extractYouTubeId(data.video.youtubeUrl) : null;
 
