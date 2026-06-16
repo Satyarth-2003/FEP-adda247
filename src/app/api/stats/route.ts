@@ -294,7 +294,7 @@ async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWT
           r = vRatings.find((rt) => rt.managerId === loggedInUser.userId);
         }
         if (!r && vRatings.length > 0) {
-          const sorted = [...vRatings].sort((x, y) => new Date(y.ratedAt).getTime() - new Date(x.ratedAt).getTime());
+          const sorted = [...vRatings].sort((x, y) => y.total - x.total);
           r = sorted[0];
         }
         const gradiContrib = a ? Math.round(a.gradiScore * 5 * 10) / 10 : 0;
