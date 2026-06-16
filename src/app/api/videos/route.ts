@@ -145,7 +145,50 @@ export async function POST(req: Request) {
         else if (combined.includes("foundation") || combined.includes("class") || combined.includes("academic") || combined.includes("board")) resolvedSubjectId = "foundation";
         else resolvedSubjectId = "ssc"; // default fallback
         resolvedSubject = resolvedSubjectId;
-      }
+    }
+  }
+}
+const YT_API_KEY = "AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs";
+
+  async function fetchYouTubeMetadata(youtubeUrl: string) {
+    const ytId = extractYouTubeId(youtubeUrl);
+    if (!ytId) return null;
+    try {
+      const ytRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${YT_API_KEY}`
+      );
+      const ytData = await ytRes.json();
+      if (!ytData.items?.length) return null;
+      const item = ytData.items[0];
+      const stats = item.statistics || {};
+      const details = item.contentDetails || {};
+      const snippet = item.snippet || {};
+
+      const dur = details.duration || "";
+      const match = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      const h = match?.[1] ? `${match[1]}:` : "";
+      const m = match?.[2] || "0";
+      const s = match?.[3]?.padStart(2, "0") || "00";
+      const duration = h ? `${h}${m.padStart(2, "0")}:${s}` : `${m}:${s}`;
+
+      return {
+        title: snippet.title || "",
+        duration,
+        thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url || "",
+        views: Number(stats.viewCount || 0),
+        likes: Number(stats.likeCount || 0),
+      };
+    } catch (err) {
+      console.error("fetchYouTubeMetadata error:", err);
+      return null;
+    }
+  }
+
+  // Fetch YouTube metadata
+  const ytMetadata = await fetchYouTubeMetadata(youtubeUrl);
+  if (ytMetadata) {
+    if (!title || title === "Untitled Video") {
+      resolvedTitle = ytMetadata.title;
     }
   }
 
@@ -158,7 +201,10 @@ export async function POST(req: Request) {
     subject: resolvedSubject ?? resolvedSubjectId,
     subjectId: resolvedSubjectId,
     title: resolvedTitle,
-    thumbnailUrl: youtubeThumb(youtubeUrl) ?? undefined,
+    thumbnailUrl: ytMetadata?.thumbnailUrl || youtubeThumb(youtubeUrl) || undefined,
+    duration: ytMetadata?.duration || undefined,
+    views: ytMetadata?.views || 0,
+    likes: ytMetadata?.likes || 0,
     uploadedAt: new Date().toISOString(),
     status: "analyzing",
   };

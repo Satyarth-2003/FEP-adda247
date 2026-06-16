@@ -69,6 +69,8 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
     }, 600);
   }
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   function handleRating(key: ManagerParamKey, val: number) {
     const next = { ...ratings, [key]: val }; setRatings(next);
     if (managerMode) autoSave(next, notes);
@@ -79,6 +81,47 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
     if (managerMode) autoSave(ratings, val);
   }
 
+  async function handleSaveNow() {
+    if (!videoId) return;
+    setSaving(true);
+    try {
+      await fetch("/api/ratings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId, ...ratings, notes }),
+      });
+      setSavedAt(Date.now());
+      onRated?.();
+    } catch (err) {
+      console.error("Error saving ratings:", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteVideo() {
+    if (!videoId) return;
+    if (!window.confirm("Are you sure you want to permanently delete this video? This action cannot be undone.")) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/videos/${videoId}`, { method: "DELETE" });
+      if (res.ok) {
+        onClose();
+        onRated?.();
+      } else {
+        const err = await res.json();
+        alert(`Error: ${err.error || "Failed to delete video"}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete video due to a network error.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   const managerTotal = (ratings.boardWork??0)+(ratings.visualTLM??0)+(ratings.energy??0)+(ratings.delivery??0)+(ratings.hook??0);
   const displayedRating = managerMode
     ? { boardWork: ratings.boardWork, visualTLM: ratings.visualTLM, energy: ratings.energy, delivery: ratings.delivery, hook: ratings.hook, total: managerTotal }
@@ -87,7 +130,12 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
   // Gradi: raw 0–5 × 5 = 0–25 (half of 50). Manager: 5 params × 1–5 = 5–25 (half of 50). Combined ring = /50.
   // For display purposes: show each score /50 by doubling (Gradi ×10, Manager ×2).
   const gradiContrib = data?.analysis ? Math.round(data.analysis.gradiScore * 5 * 10) / 10 : 0; // 0–25 for ring
-  const combinedTotal = Number((activeManagerScore + gradiContrib).toFixed(1)); // /50 ring
+
+  const hasManagerRating = managerMode || !!displayedRating;
+  const combinedTotal = hasManagerRating ? Number((activeManagerScore + gradiContrib).toFixed(1)) : gradiContrib;
+  const combinedMax = hasManagerRating ? 50 : 25;
+  const combinedLabel = hasManagerRating ? "/ 50" : "/ 25";
+
   const ytId = data?.video ? extractYouTubeId(data.video.youtubeUrl) : null;
 
   return (
@@ -172,9 +220,20 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                             <ExternalLink className="h-3 w-3" /> Watch on YouTube
                           </a>
                         </div>
-                        <button onClick={onClose} className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full border border-border text-fg-muted hover:bg-bg hover:text-fg">
-                          <X className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {managerMode && (
+                            <button
+                              onClick={handleDeleteVideo}
+                              disabled={isDeleting}
+                              className="shrink-0 flex h-8 px-3 items-center justify-center rounded-full border border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20 mr-1 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {isDeleting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : "Delete"}
+                            </button>
+                          )}
+                          <button onClick={onClose} className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full border border-border text-fg-muted hover:bg-bg hover:text-fg">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -201,7 +260,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                             <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
                               <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 16 }}>Combined Score</p>
                               <div className="flex items-center gap-6">
-                                <ScoreRing key={`ring-${videoId}`} score={combinedTotal} max={50} size={108} stroke={8} label="/ 50" />
+                                <ScoreRing key={`ring-${videoId}`} score={combinedTotal} max={combinedMax} size={108} stroke={8} label={combinedLabel} />
                                 <div className="flex-1 space-y-3">
                                   <ScoreHalf key={"mgr-" + videoId} label="Manager Score" value={activeManagerScore} max={25} isEmpty={!managerMode && !displayedRating} emptyLabel="Not yet rated" />
                                   <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
@@ -232,10 +291,20 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                 <div className="space-y-5">
                                   {MANAGER_PARAMS.map(p => <ScoringSlider key={p.key} label={p.label} desc={p.desc} value={ratings[p.key]??1} onChange={v => handleRating(p.key, v)} />)}
                                 </div>
-                                <div className="mt-5 pt-4 border-t border-border">
-                                  <label style={{ display: "block", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--fg-muted)", marginBottom: 8 }}>Feedback notes</label>
-                                  <textarea value={notes} onChange={e => handleNotes(e.target.value)} rows={3} placeholder="Share specific feedback for the faculty..."
-                                    style={{ width: "100%", background: "var(--bg-elev)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "var(--fg)", outline: "none", resize: "vertical" }} />
+                                <div className="mt-5 pt-4 border-t border-border space-y-4">
+                                  <div>
+                                    <label style={{ display: "block", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--fg-muted)", marginBottom: 8 }}>Feedback notes</label>
+                                    <textarea value={notes} onChange={e => handleNotes(e.target.value)} rows={3} placeholder="Share specific feedback for the faculty..."
+                                      style={{ width: "100%", background: "var(--bg-elev)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "var(--fg)", outline: "none", resize: "vertical" }} />
+                                  </div>
+                                  <button
+                                    onClick={handleSaveNow}
+                                    disabled={saving}
+                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-fg text-bg py-2.5 text-xs font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer border-none"
+                                  >
+                                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                    Save Manager Score
+                                  </button>
                                 </div>
                               </div>
                             )}

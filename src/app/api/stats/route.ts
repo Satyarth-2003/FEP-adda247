@@ -1,9 +1,75 @@
-import { NextResponse } from "next/server";
-import { QueryCommand, ScanCommand, BatchGetCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { NextResponse, after } from "next/server";
+import { QueryCommand, ScanCommand, BatchGetCommand, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import type { GradiAnalysis, ManagerRating, User, Video } from "@/types";
 import { processPendingQueue } from "@/lib/gradi";
+import { extractYouTubeId } from "@/lib/utils";
+
+const YT_API_KEY = "AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs";
+
+async function fetchYouTubeMetadata(youtubeUrl: string) {
+  const ytId = extractYouTubeId(youtubeUrl);
+  if (!ytId) return null;
+  try {
+    const ytRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${YT_API_KEY}`
+    );
+    const ytData = await ytRes.json();
+    if (!ytData.items?.length) return null;
+    const item = ytData.items[0];
+    const stats = item.statistics || {};
+    const details = item.contentDetails || {};
+    const snippet = item.snippet || {};
+
+    const dur = details.duration || "";
+    const match = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    const h = match?.[1] ? `${match[1]}:` : "";
+    const m = match?.[2] || "0";
+    const s = match?.[3]?.padStart(2, "0") || "00";
+    const duration = h ? `${h}${m.padStart(2, "0")}:${s}` : `${m}:${s}`;
+
+    return {
+      title: snippet.title || "",
+      duration,
+      thumbnailUrl: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url || "",
+      views: Number(stats.viewCount || 0),
+      likes: Number(stats.likeCount || 0),
+    };
+  } catch (err) {
+    console.error("fetchYouTubeMetadata error:", err);
+    return null;
+  }
+}
+
+function triggerSelfHealing(videos: Video[]) {
+  const missing = videos.filter(v => !v.duration && v.youtubeUrl);
+  if (missing.length === 0) return;
+  after(async () => {
+    try {
+      console.log(`[Self-healing] Found ${missing.length} videos lacking duration. Healing...`);
+      for (const v of missing) {
+        const metadata = await fetchYouTubeMetadata(v.youtubeUrl);
+        if (metadata) {
+          await ddb.send(new UpdateCommand({
+            TableName: TABLES.VIDEOS,
+            Key: { facultyId: v.facultyId, videoId: v.videoId },
+            UpdateExpression: "SET duration = :dur, thumbnailUrl = :thumb, views = :views, likes = :likes",
+            ExpressionAttributeValues: {
+              ":dur": metadata.duration,
+              ":thumb": metadata.thumbnailUrl || v.thumbnailUrl || "",
+              ":views": metadata.views,
+              ":likes": metadata.likes,
+            }
+          }));
+          console.log(`[Self-healing] Healed video ${v.videoId} with duration ${metadata.duration}`);
+        }
+      }
+    } catch (err) {
+      console.error("[Self-healing] Error in background worker:", err);
+    }
+  });
+}
 
 // Aggregate stats — for hero card and leaderboard
 export async function GET(req: Request) {
@@ -40,6 +106,7 @@ export async function GET(req: Request) {
   );
   const videos = (videosRes.Items ?? []) as Video[];
   processPendingQueue();
+  triggerSelfHealing(videos);
 
   if (videos.length === 0) {
     return NextResponse.json({
@@ -130,6 +197,7 @@ async function aggregateAll(cohort: string = "June EduSkill") {
   const videos = (videosRes.Items ?? []) as Video[];
   const analyses = (analysesRes.Items ?? []) as GradiAnalysis[];
   processPendingQueue();
+  triggerSelfHealing(videos);
   const ratings = (ratingsRes.Items ?? []) as ManagerRating[];
   const aMap = new Map(analyses.map((a) => [a.videoId, a]));
 

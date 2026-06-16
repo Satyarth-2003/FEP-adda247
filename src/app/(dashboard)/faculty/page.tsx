@@ -26,6 +26,34 @@ interface FacultyStats {
   videos: (Video & { analysis?: GradiAnalysis | null })[];
 }
 
+function getWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now.setDate(diffToMonday));
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  return { monday, sunday };
+}
+
+function isAbove5Mins(duration?: string): boolean {
+  if (!duration) return false;
+  const parts = duration.split(":").map(Number);
+  if (parts.length === 3) {
+    const [h, m, s] = parts;
+    return (h * 3600 + m * 60 + s) > 300;
+  }
+  if (parts.length === 2) {
+    const [m, s] = parts;
+    return (m * 60 + s) > 300;
+  }
+  return false;
+}
+
 export default function FacultyDashboard() {
   const [activeSubject, setActiveSubject] = useState<string>("all");
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
@@ -39,6 +67,9 @@ export default function FacultyDashboard() {
   const [editSubjects, setEditSubjects] = useState<string[]>([]);
   const [editAvatar, setEditAvatar] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+
+  const [showTrackerModal, setShowTrackerModal] = useState(false);
+  const [hasCheckedTracker, setHasCheckedTracker] = useState(false);
 
   const meQ = useQuery({
     queryKey: ["me"],
@@ -62,6 +93,23 @@ export default function FacultyDashboard() {
   const subjects = subjectsQ.data?.subjects ?? [];
   const stats = statsQ.data;
   const user = meQ.data?.user;
+
+  const isOwnProfile = user?.role === "eduskill_faculty" && (!facultyId || facultyId === user?.userId);
+
+  useEffect(() => {
+    if (stats && !hasCheckedTracker && isOwnProfile) {
+      const { monday, sunday } = getWeekRange();
+      const weeklyVideos = (stats.videos ?? []).filter(v => {
+        const d = new Date(v.uploadedAt);
+        return d >= monday && d <= sunday;
+      });
+      const count = weeklyVideos.filter(v => isAbove5Mins(v.duration)).length;
+      if (count < 3) {
+        setShowTrackerModal(true);
+      }
+      setHasCheckedTracker(true);
+    }
+  }, [stats, isOwnProfile, hasCheckedTracker]);
 
   useEffect(() => {
     if (stats) {
@@ -129,7 +177,6 @@ export default function FacultyDashboard() {
     return tabs;
   }, [subjects, stats]);
 
-  const isOwnProfile = user?.role === "eduskill_faculty" && (!facultyId || facultyId === user?.userId);
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-8 md:py-10">
@@ -322,6 +369,109 @@ export default function FacultyDashboard() {
         videoId={openVideoId}
         onClose={() => setOpenVideoId(null)}
       />
+
+      {/* Weekly Upload Tracker Modal */}
+      <AnimatePresence>
+        {showTrackerModal && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTrackerModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            {/* Content */}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-bg-elev/90 p-6 shadow-2xl backdrop-blur-xl space-y-4"
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 text-xl">
+                  ⚠️
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-fg leading-none">Weekly Upload Tracker</h3>
+                  <p className="text-[11px] text-fg-dim mt-1.5 uppercase tracking-wider font-semibold">Monday to Sunday Requirement</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 mt-4">
+                <p className="text-sm text-fg/90 leading-relaxed">
+                  Every faculty member is required to upload at least <strong>3 videos above 5 minutes</strong> in length each week (Monday to Sunday).
+                </p>
+                
+                {/* Progress Visualizer */}
+                {(() => {
+                  const { monday, sunday } = getWeekRange();
+                  const weeklyVideos = (stats?.videos ?? []).filter(v => {
+                    const d = new Date(v.uploadedAt);
+                    return d >= monday && d <= sunday;
+                  });
+                  const targetVideos = weeklyVideos.filter(v => isAbove5Mins(v.duration));
+                  const count = targetVideos.length;
+                  const pct = Math.min(100, (count / 3) * 100);
+
+                  return (
+                    <div className="rounded-xl border border-border bg-bg/50 p-4 space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-fg-muted font-medium">Your progress this week:</span>
+                        <span className="font-mono font-bold text-fg">{count} / 3 videos</span>
+                      </div>
+                      
+                      <div className="h-2 w-full bg-border rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${pct}%`, backgroundColor: count >= 3 ? "var(--emerald)" : "var(--amber)", backgroundImage: count >= 3 ? "none" : "linear-gradient(90deg, #f59e0b, #fbbf24)" }}
+                        />
+                      </div>
+
+                      {count < 3 ? (
+                        <p className="text-[11px] text-amber-500 font-medium">
+                          Action required: Please upload {3 - count} more video{3 - count > 1 ? "s" : ""} above 5 mins.
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-emerald-500 font-medium">
+                          Goal met! Thank you for completing your weekly uploads.
+                        </p>
+                      )}
+
+                      {weeklyVideos.length > 0 && (
+                        <div className="pt-2 border-t border-border/60 space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+                          <p className="text-[9px] uppercase tracking-wider text-fg-dim font-bold">This week's uploads</p>
+                          {weeklyVideos.map(v => {
+                            const valid = isAbove5Mins(v.duration);
+                            return (
+                              <div key={v.videoId} className="flex items-center justify-between text-[11px] gap-2">
+                                <span className="truncate text-fg/80">{v.title}</span>
+                                <span className={`shrink-0 font-mono font-medium ${valid ? "text-emerald-500" : "text-fg-dim"}`}>
+                                  {v.duration || "—"} {valid ? "✓" : "✗"}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setShowTrackerModal(false)}
+                  className="rounded-xl bg-fg px-5 py-2.5 text-xs font-semibold text-bg hover:opacity-90 transition-opacity cursor-pointer border-none"
+                >
+                  I Understand
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
