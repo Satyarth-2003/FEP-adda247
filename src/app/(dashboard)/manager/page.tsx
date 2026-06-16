@@ -1394,9 +1394,8 @@ function MarchEduSkillDashboard() {
               {/* Performance Metrics */}
               {(() => {
                 const stats = getFacultyStats(selectedFacultyData.email);
-                const mockViews = stats.installs * 14 + selectedFacultyData.name.split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 200;
                 const realViews = videos.reduce((acc: number, v: any) => acc + (v.views || 0), 0);
-                const views = realViews > 0 ? realViews : (videos.length > 0 ? mockViews : stats.installs * 12 + 150);
+                const views = realViews;
                 const subscribersGained = Math.floor(stats.installs * 0.4) + Math.floor(views * 0.02);
                 
                 return (
