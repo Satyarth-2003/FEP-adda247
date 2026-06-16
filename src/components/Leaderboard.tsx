@@ -10,6 +10,7 @@ interface LeaderRow {
   subjects: string[];
   videoCount: number;
   avgGradiScore: number;
+  avgCombinedScore?: number;
 }
 
 interface LeaderboardProps {
@@ -27,7 +28,8 @@ export function Leaderboard({
     <div className="space-y-2">
       <AnimatePresence>
         {rows.map((row, i) => {
-          const color = scoreColor(row.avgGradiScore);
+          const displayScore = row.avgCombinedScore !== undefined ? row.avgCombinedScore : row.avgGradiScore * 10;
+          const color = scoreColor(displayScore / 10);
           const isSelected = selectedId === row.userId;
           return (
             <motion.button
@@ -90,7 +92,7 @@ export function Leaderboard({
                     className="text-mono text-base font-semibold tracking-tight"
                     style={{ color }}
                   >
-                    {(row.avgGradiScore * 10).toFixed(1)}
+                    {displayScore.toFixed(1)}
                   </span>
                   <span className="text-[9px] uppercase tracking-wider text-fg-dim">
                     /50
@@ -98,7 +100,7 @@ export function Leaderboard({
                 </div>
                 <TrendingUp
                   className="h-3.5 w-3.5 text-fg-dim transition-colors group-hover:text-fg"
-                  style={{ color: row.avgGradiScore > 0 ? color : undefined }}
+                  style={{ color: displayScore > 0 ? color : undefined }}
                 />
               </div>
             </motion.button>

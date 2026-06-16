@@ -284,6 +284,17 @@ async function aggregateAll(cohort: string = "June EduSkill") {
         .filter((n) => n > 0);
       const avg =
         scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+
+      // Calculate combined scores (gradi score * 5 + manager score)
+      const combinedScores = own.map((v) => {
+        const a = aMap.get(v.videoId);
+        const r = ratings.find((rt) => rt.videoId === v.videoId);
+        const gradiContrib = a ? Math.round(a.gradiScore * 5 * 10) / 10 : 0;
+        const managerScore = r ? r.total : 0;
+        return gradiContrib + managerScore;
+      });
+      const avgCombined = combinedScores.length > 0 ? combinedScores.reduce((a, b) => a + b, 0) / combinedScores.length : 0;
+
       return {
         userId: u.userId,
         name: u.name,
@@ -291,9 +302,10 @@ async function aggregateAll(cohort: string = "June EduSkill") {
         subjects: u.subjects,
         videoCount: own.length,
         avgGradiScore: Number(avg.toFixed(2)),
+        avgCombinedScore: Number(avgCombined.toFixed(2)),
       };
     });
-    leaderboard.sort((a, b) => b.avgGradiScore - a.avgGradiScore);
+    leaderboard.sort((a, b) => b.avgCombinedScore - a.avgCombinedScore);
   }
 
   // Per-subject aggregate (radar)
