@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { QueryCommand, ScanCommand, BatchGetCommand, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
-import type { GradiAnalysis, ManagerRating, User, Video } from "@/types";
+import type { GradiAnalysis, ManagerRating, User, Video, JWTPayload } from "@/types";
 import { processPendingQueue } from "@/lib/gradi";
 import { extractYouTubeId } from "@/lib/utils";
 
@@ -94,7 +94,7 @@ export async function GET(req: Request) {
   const facultyUser = facultyUserRes.Item as User | undefined;
 
   if (searchParams.get("scope") === "all") {
-    return aggregateAll(searchParams.get("cohort") ?? "June EduSkill");
+    return aggregateAll(searchParams.get("cohort") ?? "June EduSkill", user);
   }
 
   const videosRes = await ddb.send(
@@ -178,7 +178,7 @@ export async function GET(req: Request) {
   });
 }
 
-async function aggregateAll(cohort: string = "June EduSkill") {
+async function aggregateAll(cohort: string = "June EduSkill", loggedInUser?: JWTPayload) {
   const [usersRes, videosRes, analysesRes, ratingsRes] = await Promise.all([
     ddb.send(
       new ScanCommand({
@@ -288,7 +288,15 @@ async function aggregateAll(cohort: string = "June EduSkill") {
       // Calculate combined scores (gradi score * 5 + manager score)
       const combinedScores = own.map((v) => {
         const a = aMap.get(v.videoId);
-        const r = ratings.find((rt) => rt.videoId === v.videoId);
+        const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
+        let r: ManagerRating | undefined;
+        if (loggedInUser && loggedInUser.role === "eduskill_manager") {
+          r = vRatings.find((rt) => rt.managerId === loggedInUser.userId);
+        }
+        if (!r && vRatings.length > 0) {
+          const sorted = [...vRatings].sort((x, y) => new Date(y.ratedAt).getTime() - new Date(x.ratedAt).getTime());
+          r = sorted[0];
+        }
         const gradiContrib = a ? Math.round(a.gradiScore * 5 * 10) / 10 : 0;
         const managerScore = r ? r.total : 0;
         return gradiContrib + managerScore;

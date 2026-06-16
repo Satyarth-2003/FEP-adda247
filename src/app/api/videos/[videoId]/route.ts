@@ -52,7 +52,7 @@ export async function GET(
   return NextResponse.json({
     video,
     analysis: (analysisRes.Item ?? null) as GradiAnalysis | null,
-    managerRatings: (ratingsRes.Items ?? []) as ManagerRating[],
+    managerRatings: ((ratingsRes.Items ?? []) as ManagerRating[]).sort((a, b) => new Date(b.ratedAt).getTime() - new Date(a.ratedAt).getTime()),
   });
 }
 

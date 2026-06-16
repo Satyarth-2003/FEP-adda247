@@ -312,7 +312,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                             {data.analysis && (
                               <div className="space-y-4">
                                 <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
-                                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 8 }}>Gradi AI &middot; {(data.analysis.gradiScore * 10).toFixed(1)}/50</p>
+                                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 8 }}>Gradi AI &middot; {(data.analysis.gradiScore * 5).toFixed(1)}/25</p>
                                   <p className="text-sm font-medium text-fg leading-snug">{data.analysis.oneLiner || data.analysis.scoreReason}</p>
                                   {data.analysis.summary && (
                                     <>
