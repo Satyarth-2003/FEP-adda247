@@ -118,7 +118,9 @@ async function run() {
       if (r) statsMap[batch[j]] = r;
     });
     done += batch.length;
-    process.stdout.write(`\r  Fetching video stats: ${done}/${ytIds.length} (${statsMap && Object.keys(statsMap).length} successful)`);
+    process.stdout.write(`\r  Fetching video stats: ${done}/${ytIds.length} (${Object.keys(statsMap).length} successful)`);
+    // Small delay to avoid Supadata rate limiting
+    if (i + CONCURRENCY < ytIds.length) await new Promise(r => setTimeout(r, 300));
   }
   console.log(`\n✔ Got stats for ${Object.keys(statsMap).length}/${ytIds.length} videos\n`);
 
@@ -132,6 +134,7 @@ async function run() {
     results.forEach((subs, j) => { channelSubsMap[batch[j]] = subs; });
     chanDone += batch.length;
     process.stdout.write(`\r  Fetching channel subs: ${chanDone}/${channelIds.length}`);
+    if (i + CONCURRENCY < channelIds.length) await new Promise(r => setTimeout(r, 300));
   }
   console.log(`\n✔ Got subs for ${channelIds.length} channels\n`);
 

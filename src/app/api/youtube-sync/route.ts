@@ -99,6 +99,7 @@ async function runSync() {
       const batch = ytIds.slice(i, i + CONCURRENCY);
       const results = await Promise.all(batch.map(id => fetchVideoStat(id)));
       results.forEach((r, j) => { if (r) statsMap.set(batch[j], r); });
+      if (i + CONCURRENCY < ytIds.length) await new Promise(r => setTimeout(r, 300));
     }
     console.log(`[YT Sync] Got stats for ${statsMap.size}/${ytIds.length} videos`);
 
@@ -109,6 +110,7 @@ async function runSync() {
       const batch = channelIds.slice(i, i + CONCURRENCY);
       const results = await Promise.all(batch.map(id => fetchChannelSubs(id)));
       results.forEach((subs, j) => channelSubsMap.set(batch[j], subs));
+      if (i + CONCURRENCY < channelIds.length) await new Promise(r => setTimeout(r, 300));
     }
 
     // 5. Group by faculty
