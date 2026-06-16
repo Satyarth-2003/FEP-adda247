@@ -1178,8 +1178,8 @@ function MarchEduSkillDashboard() {
   const totalSessions = totals.sessions;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-8 md:py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+    <div className="mx-auto max-w-[1400px] w-full px-6 py-6 h-[calc(100vh-64px)] flex flex-col overflow-hidden">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex items-center justify-between gap-4 flex-wrap shrink-0">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <div className="flex items-center gap-2 rounded-full border border-border bg-bg-elev/50 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-fg-muted">
@@ -1192,10 +1192,10 @@ function MarchEduSkillDashboard() {
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[440px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[440px_1fr] gap-6 flex-1 min-h-0 overflow-hidden">
         {/* LEFT: Leaderboard */}
-        <div>
-          <div className="mb-3 flex items-center gap-2">
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="mb-3 flex items-center gap-2 shrink-0">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-fg-muted" />
               <input
@@ -1217,7 +1217,8 @@ function MarchEduSkillDashboard() {
             </select>
           </div>
 
-          {cohortQ.isLoading ? (
+          <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2">
+            {cohortQ.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="h-16 rounded-xl shimmer border border-border" />
@@ -1273,10 +1274,11 @@ function MarchEduSkillDashboard() {
               })}
             </div>
           )}
+          </div>
         </div>
 
         {/* RIGHT: Detail pane */}
-        <div>
+        <div className="h-full overflow-y-auto pr-1">
           {selectedFaculty && selectedFacultyData ? (
             <div className="space-y-5">
               {/* Profile Card & Editor */}
