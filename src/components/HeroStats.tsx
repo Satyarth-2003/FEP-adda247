@@ -33,7 +33,7 @@ export function HeroStats({
   subscribers = 0,
   ytStatsSyncedAt,
 }: HeroStatsProps) {
-  const hasCachedStats = totalViews > 0 || totalLikes > 0 || subscribers > 0;
+  const hasCachedStats = ytStatsSyncedAt !== null && ytStatsSyncedAt !== undefined && ytStatsSyncedAt !== "";
 
   return (
     <motion.div

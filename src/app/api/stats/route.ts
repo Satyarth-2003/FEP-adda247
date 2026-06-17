@@ -5,6 +5,7 @@ import {
   BatchGetCommand,
   GetCommand,
   UpdateCommand,
+  PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
@@ -13,6 +14,119 @@ import { processPendingQueue } from "@/lib/gradi";
 import { extractYouTubeId } from "@/lib/utils";
 
 const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
+const SUPADATA_KEY = process.env.SUPADATA_API_KEY ?? "";
+const SUPADATA_VIDEO = "https://api.supadata.ai/v1/youtube/video";
+const SUPADATA_CHANNEL = "https://api.supadata.ai/v1/youtube/channel";
+
+async function fetchVideoStat(ytId: string) {
+  try {
+    const res = await fetch(`${SUPADATA_VIDEO}?id=${ytId}`, {
+      headers: { "x-api-key": SUPADATA_KEY },
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    return {
+      views: Number(d.viewCount ?? 0),
+      likes: Number(d.likeCount ?? 0),
+      channelId: d.channel?.id ?? "",
+      duration: Number(d.duration ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchChannelSubs(channelId: string): Promise<number> {
+  try {
+    const res = await fetch(`${SUPADATA_CHANNEL}?id=${channelId}`, {
+      headers: { "x-api-key": SUPADATA_KEY },
+    });
+    if (!res.ok) return 0;
+    const d = await res.json();
+    return Number(d.subscriberCount ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+function formatDurationSeconds(seconds: number): string {
+  if (!seconds) return "";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+async function triggerBackgroundFacultyYTSync(facultyId: string, videos: Video[]) {
+  after(async () => {
+    try {
+      console.log(`[Background YT Sync] Starting for faculty ${facultyId}`);
+      const ytIdSet = new Set<string>();
+      for (const v of videos) {
+        const id = extractYouTubeId(v.youtubeUrl);
+        if (id) ytIdSet.add(id);
+      }
+      const ytIds = Array.from(ytIdSet);
+      if (ytIds.length === 0) return;
+
+      const statsMap = new Map<string, { views: number; likes: number; channelId: string; duration: number }>();
+      const CONCURRENCY = 5;
+      for (let i = 0; i < ytIds.length; i += CONCURRENCY) {
+        const batch = ytIds.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(batch.map(id => fetchVideoStat(id)));
+        results.forEach((r, j) => { if (r) statsMap.set(batch[j], r); });
+        if (i + CONCURRENCY < ytIds.length) await new Promise(r => setTimeout(r, 300));
+      }
+
+      const channelIds = [...new Set([...statsMap.values()].map(s => s.channelId).filter(Boolean))];
+      const channelSubsMap = new Map<string, number>();
+      for (let i = 0; i < channelIds.length; i += CONCURRENCY) {
+        const batch = channelIds.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(batch.map(id => fetchChannelSubs(id)));
+        results.forEach((subs, j) => channelSubsMap.set(batch[j], subs));
+        if (i + CONCURRENCY < channelIds.length) await new Promise(r => setTimeout(r, 300));
+      }
+
+      let totalViews = 0;
+      let totalLikes = 0;
+      let channelId = "";
+
+      for (const v of videos) {
+        const ytId = extractYouTubeId(v.youtubeUrl);
+        if (!ytId) continue;
+        const s = statsMap.get(ytId);
+        if (!s) continue;
+
+        totalViews += s.views;
+        totalLikes += s.likes;
+        if (!channelId && s.channelId) channelId = s.channelId;
+
+        const newDur = s.duration ? formatDurationSeconds(s.duration) : v.duration;
+        if (v.views !== s.views || v.likes !== s.likes || (!v.duration && newDur)) {
+          await ddb.send(new UpdateCommand({
+            TableName: TABLES.VIDEOS,
+            Key: { facultyId: v.facultyId, videoId: v.videoId },
+            UpdateExpression: "SET #views = :v, likes = :l, #dur = :d",
+            ExpressionAttributeNames: { "#views": "views", "#dur": "duration" },
+            ExpressionAttributeValues: { ":v": s.views, ":l": s.likes, ":d": newDur },
+          })).catch(e => console.error(`[Background YT Sync] Video update failed ${v.videoId}:`, e));
+        }
+      }
+
+      const subscribers = channelId ? (channelSubsMap.get(channelId) ?? 0) : 0;
+      const syncedAt = new Date().toISOString();
+
+      await ddb.send(new PutCommand({
+        TableName: TABLES.YT_STATS,
+        Item: { facultyId, totalViews, totalLikes, subscribers, channelId, syncedAt },
+      }));
+      console.log(`[Background YT Sync] Completed for faculty ${facultyId}. Views: ${totalViews}, Subs: ${subscribers}`);
+    } catch (err) {
+      console.error(`[Background YT Sync] Error for faculty ${facultyId}:`, err);
+    }
+  });
+}
 
 
 // ── Cached YT stats row shape ──────────────────────────────────────
@@ -172,6 +286,13 @@ export async function GET(req: Request) {
 
   // ── Read cached YouTube stats (synced hourly by /api/youtube-sync) ──
   const ytCache = await getCachedYTStats(facultyId);
+
+  const isStale = !ytCache || !ytCache.syncedAt || 
+    (new Date().getTime() - new Date(ytCache.syncedAt).getTime() > 1000 * 60 * 60);
+
+  if (isStale && videos.length > 0) {
+    triggerBackgroundFacultyYTSync(facultyId, videos);
+  }
 
   // ── Gradi analyses ──────────────────────────────────────────────
   const keys = videos.map((v) => ({ videoId: v.videoId }));
