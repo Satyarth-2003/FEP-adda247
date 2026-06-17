@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ScanCommand, BatchGetCommand } from "@aws-sdk/lib-dynamodb";
+import { ScanCommand, BatchGetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import type { Video, GradiAnalysis, ManagerRating } from "@/types";
@@ -26,9 +26,22 @@ export async function GET() {
   }
   const aMap = new Map(analyses.map(a => [a.videoId, a]));
 
-  // Get all manager ratings
-  const ratingsRes = await ddb.send(new ScanCommand({ TableName: TABLES.RATINGS }));
-  const ratings = (ratingsRes.Items ?? []) as ManagerRating[];
+  // Query manager ratings for only the logged videos (partition key query)
+  const videoIds = videos.map(v => v.videoId);
+  const ratings: ManagerRating[] = [];
+  if (videoIds.length > 0) {
+    const ratingPromises = videoIds.map(vId =>
+      ddb.send(new QueryCommand({
+        TableName: TABLES.RATINGS,
+        KeyConditionExpression: "videoId = :v",
+        ExpressionAttributeValues: { ":v": vId }
+      }))
+    );
+    const ratingResults = await Promise.all(ratingPromises);
+    ratingResults.forEach(r => {
+      if (r.Items) ratings.push(...(r.Items as ManagerRating[]));
+    });
+  }
   const rMap = new Map<string, ManagerRating>();
   for (const r of ratings) rMap.set(r.videoId, r);
 

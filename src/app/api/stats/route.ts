@@ -387,31 +387,93 @@ async function aggregateAll(
   cohort: string = "June EduSkill",
   loggedInUser?: JWTPayload
 ) {
-  const [usersRes, videosRes, analysesRes, ratingsRes, ytStatsRes] =
-    await Promise.all([
-      ddb.send(
-        new ScanCommand({
-          TableName: TABLES.USERS,
-          FilterExpression: "#r = :r AND cohort = :c",
-          ExpressionAttributeNames: { "#r": "role" },
-          ExpressionAttributeValues: {
-            ":r": "eduskill_faculty",
-            ":c": cohort,
-          },
-        })
-      ),
-      ddb.send(new ScanCommand({ TableName: TABLES.VIDEOS })),
-      ddb.send(new ScanCommand({ TableName: TABLES.ANALYSES })),
-      ddb.send(new ScanCommand({ TableName: TABLES.RATINGS })),
-      // Read full YT stats cache table in one scan
-      ddb.send(new ScanCommand({ TableName: TABLES.YT_STATS })),
-    ]);
+  // 1. Scan USERS to find faculty in the cohort (Scan is necessary as we have no index on cohort)
+  const usersRes = await ddb.send(
+    new ScanCommand({
+      TableName: TABLES.USERS,
+      FilterExpression: "#r = :r AND cohort = :c",
+      ExpressionAttributeNames: { "#r": "role" },
+      ExpressionAttributeValues: {
+        ":r": "eduskill_faculty",
+        ":c": cohort,
+      },
+    })
+  );
 
   const users = (usersRes.Items ?? []) as User[];
-  const videos = (videosRes.Items ?? []) as Video[];
-  const analyses = (analysesRes.Items ?? []) as GradiAnalysis[];
-  const ratings = (ratingsRes.Items ?? []) as ManagerRating[];
-  const ytStatsRows = (ytStatsRes.Items ?? []) as YTStatsRow[];
+  const facultyIds = users.map((u) => u.userId);
+
+  // 2. Fetch videos only for these faculty using parallel QueryCommands (partition key query)
+  const videoPromises = facultyIds.map((fId) =>
+    ddb.send(
+      new QueryCommand({
+        TableName: TABLES.VIDEOS,
+        KeyConditionExpression: "facultyId = :f",
+        ExpressionAttributeValues: { ":f": fId },
+      })
+    )
+  );
+  const videoResults = await Promise.all(videoPromises);
+  const videos = videoResults.flatMap((r) => r.Items ?? []) as Video[];
+  const videoIds = videos.map((v) => v.videoId);
+
+  // 3. BatchGet analyses for only the cohort's videos
+  const analyses: GradiAnalysis[] = [];
+  if (videoIds.length > 0) {
+    const keys = videoIds.map((id) => ({ videoId: id }));
+    for (let i = 0; i < keys.length; i += 100) {
+      const chunk = keys.slice(i, i + 100);
+      const res = await ddb.send(
+        new BatchGetCommand({
+          RequestItems: {
+            [TABLES.ANALYSES]: { Keys: chunk },
+          },
+        })
+      );
+      if (res.Responses?.[TABLES.ANALYSES]) {
+        analyses.push(...(res.Responses[TABLES.ANALYSES] as GradiAnalysis[]));
+      }
+    }
+  }
+
+  // 4. Query ratings for each video individually
+  const ratings: ManagerRating[] = [];
+  if (videoIds.length > 0) {
+    const ratingPromises = videoIds.map((vId) =>
+      ddb.send(
+        new QueryCommand({
+          TableName: TABLES.RATINGS,
+          KeyConditionExpression: "videoId = :v",
+          ExpressionAttributeValues: { ":v": vId },
+        })
+      )
+    );
+    const ratingResults = await Promise.all(ratingPromises);
+    ratingResults.forEach((r) => {
+      if (r.Items) {
+        ratings.push(...(r.Items as ManagerRating[]));
+      }
+    });
+  }
+
+  // 5. BatchGet YT stats for the cohort's faculty
+  const ytStatsRows: YTStatsRow[] = [];
+  if (facultyIds.length > 0) {
+    const keys = facultyIds.map((id) => ({ facultyId: id }));
+    for (let i = 0; i < keys.length; i += 100) {
+      const chunk = keys.slice(i, i + 100);
+      const res = await ddb.send(
+        new BatchGetCommand({
+          RequestItems: {
+            [TABLES.YT_STATS]: { Keys: chunk },
+          },
+        })
+      );
+      if (res.Responses?.[TABLES.YT_STATS]) {
+        ytStatsRows.push(...(res.Responses[TABLES.YT_STATS] as YTStatsRow[]));
+      }
+    }
+  }
 
   processPendingQueue();
   triggerSelfHealing(videos);
