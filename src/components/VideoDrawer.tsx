@@ -46,12 +46,10 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
       .then(r => r.json())
       .then((d: DrawerData) => {
         setData(d);
-        if (managerMode && managerId) {
-          const own = d.managerRatings?.find((r: ManagerRating) => r.managerId === managerId);
-          if (own) {
-            setRatings({ boardWork: Number(own.boardWork) ?? 0, visualTLM: Number(own.visualTLM) ?? 0, energy: Number(own.energy) ?? 0, delivery: Number(own.delivery) ?? 0, hook: Number(own.hook) ?? 0 });
-            setNotes(own.notes ?? "");
-          }
+        const own = d.managerRatings?.find((r: ManagerRating) => r.managerId === "shared") || d.managerRatings?.[0];
+        if (own) {
+          setRatings({ boardWork: Number(own.boardWork) ?? 0, visualTLM: Number(own.visualTLM) ?? 0, energy: Number(own.energy) ?? 0, delivery: Number(own.delivery) ?? 0, hook: Number(own.hook) ?? 0 });
+          setNotes(own.notes ?? "");
         }
       })
       .finally(() => setLoading(false));

@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
   const rating: ManagerRating = {
     videoId,
-    managerId: user.userId,
+    managerId: "shared",
     managerName: user.name,
     boardWork: bw,
     visualTLM: vtlm,

@@ -509,18 +509,7 @@ async function aggregateAll(
       const combinedScores = own.map((v) => {
         const a = aMap.get(v.videoId);
         const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
-        let r: ManagerRating | undefined;
-        if (
-          loggedInUser &&
-          (loggedInUser.role === "eduskill_manager" ||
-            loggedInUser.role === "eduskill_admin")
-        ) {
-          r = vRatings.find((rt) => rt.managerId === loggedInUser.userId);
-        }
-        if (!r && vRatings.length > 0) {
-          const sorted = [...vRatings].sort((x, y) => y.total - x.total);
-          r = sorted[0];
-        }
+        const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
         const gradiContrib = a ? Math.round(a.gradiScore * 5 * 10) / 10 : 0;
         const managerScore = r ? r.total : 0;
         return gradiContrib + managerScore;
