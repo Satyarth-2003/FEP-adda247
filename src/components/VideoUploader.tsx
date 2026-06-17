@@ -171,26 +171,7 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
                   </div>
                 )}
 
-                {/* Subject Selection */}
-                {subjects && subjects.length > 0 && (
-                  <div>
-                    <label className="block text-[11px] font-medium uppercase tracking-wider text-fg-muted mb-2">
-                      Subject
-                    </label>
-                    <select
-                      value={subjectId}
-                      onChange={(e) => setSubjectId(e.target.value)}
-                      required
-                      className="w-full rounded-lg border border-border bg-[#181a20] pl-3 pr-8 py-2.5 text-sm outline-none focus:border-fg/30 text-white"
-                    >
-                      {subjects.map((s) => (
-                        <option key={s.subjectId} value={s.subjectId}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+
 
                 {error && (
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-400">
