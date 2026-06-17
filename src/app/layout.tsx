@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "EduSkill · EduSkill Program",
@@ -26,6 +27,7 @@ export default async function RootLayout({
     >
       <body className="min-h-screen bg-bg text-fg antialiased">
         <Providers initialTheme={theme}>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
