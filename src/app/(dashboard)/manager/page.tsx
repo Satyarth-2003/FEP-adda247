@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon, Eye, ThumbsUp, MessageSquare, ClipboardList } from "lucide-react";
+import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon, Eye, ThumbsUp, ClipboardList } from "lucide-react";
 import { Leaderboard } from "@/components/Leaderboard";
 import { VideoDrawer } from "@/components/VideoDrawer";
 import { SubjectTabs } from "@/components/SubjectTabs";
@@ -399,7 +399,7 @@ export default function ManagerDashboard() {
               </div>
 
               {/* Net YouTube stats for this faculty */}
-              <FacultyYTStats videos={filteredVideos} />
+              <FacultyYTStats videos={filteredVideos} facultyId={selectedFaculty ?? undefined} />
 
               <div className="border-b border-border pb-2">
                 <SubjectTabs
@@ -876,16 +876,15 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0 pr-1 no-scrollbar">
           <div className="glass rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-[44px_1fr_130px_90px_80px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+          <div className="grid grid-cols-[44px_1fr_160px_100px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
             <span></span>
             <span>Video</span>
             <span>Faculty</span>
-            <span>Subject</span>
             <span className="text-center">Status</span>
             <span className="text-center">Score</span>
           </div>
           {filtered.map(v => (
-            <div key={v.videoId} className="grid grid-cols-[44px_1fr_130px_90px_80px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+            <div key={v.videoId} className="grid grid-cols-[44px_1fr_160px_100px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
               {/* Thumbnail */}
               <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
                 {v.thumbnailUrl
@@ -900,8 +899,6 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
               </div>
               {/* Faculty */}
               <span className="text-[11px] text-fg-muted truncate">{v.facultyName ?? "—"}</span>
-              {/* Subject */}
-              <span className="text-[10px] text-fg-muted truncate">{v.subject ?? "—"}</span>
               {/* Status */}
               <div className="text-center">
                 <span className={cn("inline-block px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium",
@@ -1522,62 +1519,64 @@ function MarchEduSkillDashboard() {
   );
 }
 
-function FacultyYTStats({ videos }: { videos: (Video & { analysis?: GradiAnalysis | null })[] }) {
-  const [stats, setStats] = useState<{ views: number; likes: number; comments: number } | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (videos.length === 0) { setStats(null); return; }
-    setLoading(true);
-    let views = 0, likes = 0, comments = 0;
-    (async () => {
-      for (const v of videos.slice(0, 20)) {
-        try {
-          const res = await fetch(`/api/videos/${v.videoId}/youtube-stats`);
-          if (res.ok) {
-            const d = await res.json();
-            views += d.views || 0;
-            likes += d.likes || 0;
-            comments += d.comments || 0;
-          }
-        } catch { /* skip */ }
-      }
-      setStats({ views, likes, comments });
-      setLoading(false);
-    })();
-  }, [videos]);
+function FacultyYTStats({ videos, facultyId }: { videos: (Video & { analysis?: GradiAnalysis | null })[]; facultyId?: string }) {
+  const statsQ = useQuery({
+    queryKey: ["faculty-yt-stats", facultyId],
+    queryFn: async () => {
+      if (!facultyId) return null;
+      const res = await fetch(`/api/stats?facultyId=${facultyId}`);
+      const d = await res.json();
+      return { views: d.totalViews ?? 0, likes: d.totalLikes ?? 0, subscribers: d.subscribers ?? 0, syncedAt: d.ytStatsSyncedAt ?? null };
+    },
+    enabled: !!facultyId,
+    staleTime: 60_000,
+  });
 
   if (videos.length === 0) return null;
 
+  const loading = statsQ.isLoading;
+  const s = statsQ.data;
+
+  function fmt(n: number) {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return n.toString();
+  }
+
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
-        <Eye className="h-4 w-4 text-fg-muted" />
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-fg-muted">Total Views</p>
-          <p className="text-mono text-lg font-bold text-fg">
-            {loading ? "..." : stats ? stats.views.toLocaleString() : "—"}
-          </p>
+    <div className="space-y-1">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
+          <Eye className="h-4 w-4 text-fg-muted" />
+          <div>
+            <p className="text-[9px] uppercase tracking-wider text-fg-muted">Total Views</p>
+            <p className="text-mono text-lg font-bold text-fg">
+              {loading ? "..." : s ? fmt(s.views) : "—"}
+            </p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
+          <ThumbsUp className="h-4 w-4 text-fg-muted" />
+          <div>
+            <p className="text-[9px] uppercase tracking-wider text-fg-muted">Total Likes</p>
+            <p className="text-mono text-lg font-bold text-fg">
+              {loading ? "..." : s ? fmt(s.likes) : "—"}
+            </p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
+          <Users className="h-4 w-4 text-fg-muted" />
+          <div>
+            <p className="text-[9px] uppercase tracking-wider text-fg-muted">Subscribers</p>
+            <p className="text-mono text-lg font-bold text-fg">
+              {loading ? "..." : s ? fmt(s.subscribers) : "—"}
+            </p>
+          </div>
         </div>
       </div>
-      <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
-        <ThumbsUp className="h-4 w-4 text-fg-muted" />
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-fg-muted">Total Likes</p>
-          <p className="text-mono text-lg font-bold text-fg">
-            {loading ? "..." : stats ? stats.likes.toLocaleString() : "—"}
-          </p>
-        </div>
-      </div>
-      <div className="rounded-xl border border-border bg-bg-elev/50 p-3 flex items-center gap-3">
-        <MessageSquare className="h-4 w-4 text-fg-muted" />
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-fg-muted">Total Comments</p>
-          <p className="text-mono text-lg font-bold text-fg">
-            {loading ? "..." : stats ? stats.comments.toLocaleString() : "—"}
-          </p>
-        </div>
-      </div>
+      {s?.syncedAt && (
+        <p className="text-[9px] text-fg-dim text-right">YT stats synced {new Date(s.syncedAt).toLocaleTimeString()}</p>
+      )}
     </div>
   );
 }
