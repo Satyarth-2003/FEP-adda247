@@ -1404,9 +1404,9 @@ function MarchEduSkillDashboard() {
               {/* Performance Metrics */}
               {(() => {
                 const stats = getFacultyStats(selectedFacultyData.email);
-                const realViews = videos.reduce((acc: number, v: any) => acc + (v.views || 0), 0);
-                const views = realViews;
-                const subscribersGained = Math.floor(stats.installs * 0.4) + Math.floor(views * 0.02);
+                const selectedFacultyRow = aggQ.data?.leaderboard?.find((r: any) => r.userId === selectedFaculty);
+                const views = selectedFacultyRow ? selectedFacultyRow.views : videos.reduce((acc: number, v: any) => acc + (v.views || 0), 0);
+                const subscribersGained = selectedFacultyRow ? selectedFacultyRow.subscribersGained : (Math.floor(stats.installs * 0.4) + Math.floor(views * 0.02));
                 
                 return (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
