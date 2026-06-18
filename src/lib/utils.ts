@@ -17,7 +17,8 @@ export function scoreTone(score: number): "emerald" | "amber" | "rose" {
   return "rose";
 }
 
-export function extractYouTubeId(url: string): string | null {
+export function extractYouTubeId(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
   const patterns = [
     /(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/,
   ];
@@ -28,7 +29,7 @@ export function extractYouTubeId(url: string): string | null {
   return null;
 }
 
-export function youtubeThumb(url: string): string | null {
+export function youtubeThumb(url: string | null | undefined): string | null {
   const id = extractYouTubeId(url);
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
 }
