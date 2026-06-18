@@ -178,8 +178,13 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
       const ytRes = await fetch(
         `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${YT_API_KEY}`
       );
+      if (!ytRes.ok) {
+        throw new Error(`YouTube API returned status ${ytRes.status}`);
+      }
       const ytData = await ytRes.json();
-      if (!ytData.items?.length) return null;
+      if (!ytData.items?.length) {
+        throw new Error("No items found in YouTube API response");
+      }
       const item = ytData.items[0];
       const stats = item.statistics || {};
       const details = item.contentDetails || {};
@@ -201,6 +206,24 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
       };
     } catch (err) {
       console.error("fetchYouTubeMetadata error:", err);
+      // Fallback to oEmbed if YouTube API fails
+      try {
+        const oembedRes = await fetch(
+          `https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v=${ytId}`
+        );
+        if (oembedRes.ok) {
+          const oembedData = await oembedRes.json();
+          return {
+            title: oembedData.title || "",
+            duration: "",
+            thumbnailUrl: oembedData.thumbnail_url || `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
+            views: 0,
+            likes: 0,
+          };
+        }
+      } catch (oembedErr) {
+        console.error("fetchYouTubeMetadata oEmbed fallback error:", oembedErr);
+      }
       return null;
     }
   }

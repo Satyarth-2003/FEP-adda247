@@ -159,7 +159,7 @@ interface YTStatsRow {
   syncedAt?: string;
 }
 
-// ── Self-healing: fill missing duration/thumbnail for videos ──────
+// ── Self-healing: fill missing duration/thumbnail/title for videos ──
 async function fetchYouTubeMetadata(youtubeUrl: string) {
   const ytId = extractYouTubeId(youtubeUrl);
   if (!ytId) return null;
@@ -167,8 +167,13 @@ async function fetchYouTubeMetadata(youtubeUrl: string) {
     const ytRes = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${YT_API_KEY}`
     );
+    if (!ytRes.ok) {
+      throw new Error(`YouTube API returned status ${ytRes.status}`);
+    }
     const ytData = await ytRes.json();
-    if (!ytData.items?.length) return null;
+    if (!ytData.items?.length) {
+      throw new Error("No items found in YouTube API response");
+    }
     const item = ytData.items[0];
     const stats = item.statistics || {};
     const details = item.contentDetails || {};
@@ -194,17 +199,35 @@ async function fetchYouTubeMetadata(youtubeUrl: string) {
     };
   } catch (err) {
     console.error("fetchYouTubeMetadata error:", err);
+    // Fallback to oEmbed if YouTube API fails
+    try {
+      const oembedRes = await fetch(
+        `https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v=${ytId}`
+      );
+      if (oembedRes.ok) {
+        const oembedData = await oembedRes.json();
+        return {
+          title: oembedData.title || "",
+          duration: "",
+          thumbnailUrl: oembedData.thumbnail_url || `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
+          views: 0,
+          likes: 0,
+        };
+      }
+    } catch (oembedErr) {
+      console.error("fetchYouTubeMetadata oEmbed fallback error:", oembedErr);
+    }
     return null;
   }
 }
 
 function triggerSelfHealing(videos: Video[]) {
-  const missing = videos.filter((v) => !v.duration && v.youtubeUrl);
+  const missing = videos.filter((v) => (!v.duration || !v.title || v.title === "Untitled Video") && v.youtubeUrl);
   if (missing.length === 0) return;
   after(async () => {
     try {
       console.log(
-        `[Self-healing] ${missing.length} videos lacking duration. Healing...`
+        `[Self-healing] ${missing.length} videos lacking details. Healing...`
       );
       for (const v of missing) {
         const metadata = await fetchYouTubeMetadata(v.youtubeUrl);
@@ -214,13 +237,14 @@ function triggerSelfHealing(videos: Video[]) {
               TableName: TABLES.VIDEOS,
               Key: { facultyId: v.facultyId, videoId: v.videoId },
               UpdateExpression:
-                "SET duration = :dur, thumbnailUrl = :thumb, #views = :views, likes = :likes",
-              ExpressionAttributeNames: { "#views": "views" },
+                "SET duration = :dur, thumbnailUrl = :thumb, #views = :views, likes = :likes, #title = :title",
+              ExpressionAttributeNames: { "#views": "views", "#title": "title" },
               ExpressionAttributeValues: {
-                ":dur": metadata.duration,
+                ":dur": metadata.duration || v.duration || "",
                 ":thumb": metadata.thumbnailUrl || v.thumbnailUrl || "",
-                ":views": metadata.views,
-                ":likes": metadata.likes,
+                ":views": metadata.views || v.views || 0,
+                ":likes": metadata.likes || v.likes || 0,
+                ":title": metadata.title || v.title || "Untitled Video",
               },
             })
           );

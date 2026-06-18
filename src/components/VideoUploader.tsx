@@ -33,11 +33,25 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
       setFetchingTitle(true);
       try {
         const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ytId}&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY ?? ""}`);
+        if (!res.ok) throw new Error("YouTube API failed");
         const data = await res.json();
         if (data.items?.[0]?.snippet?.title) {
           setTitle(data.items[0].snippet.title);
+        } else {
+          throw new Error("No items/title found");
         }
-      } catch { /* ignore */ }
+      } catch {
+        // Fallback to oEmbed
+        try {
+          const oembedRes = await fetch(`https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v=${ytId}`);
+          if (oembedRes.ok) {
+            const oembedData = await oembedRes.json();
+            if (oembedData.title) {
+              setTitle(oembedData.title);
+            }
+          }
+        } catch { /* ignore */ }
+      }
       setFetchingTitle(false);
     }
   }
