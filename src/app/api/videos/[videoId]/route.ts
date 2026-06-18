@@ -176,16 +176,17 @@ export async function POST(
           ExpressionAttributeValues: { ":s": "gradi_done" },
         })
       );
-    } catch (e) {
+    } catch (e: any) {
       console.error("Manual Gradi analysis failed for", videoId, e);
-      // Fallback: set back to gradi_done or error state so it doesn't spin forever
+      const errorMsg = e?.message || "";
+      const statusVal = errorMsg.toLowerCase().includes("transcript") || errorMsg.includes("analysis") ? "no_transcript" : "no_transcript";
       await ddb.send(
         new UpdateCommand({
           TableName: TABLES.VIDEOS,
           Key: { facultyId: video.facultyId, videoId },
           UpdateExpression: "SET #s = :s",
           ExpressionAttributeNames: { "#s": "status" },
-          ExpressionAttributeValues: { ":s": "gradi_done" },
+          ExpressionAttributeValues: { ":s": statusVal },
         })
       ).catch(() => {});
     }

@@ -24,6 +24,10 @@ const meta: Record<
     label: "Manager Scored",
     color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
   },
+  no_transcript: {
+    label: "No Transcript",
+    color: "text-rose-400 bg-rose-400/10 border-rose-400/20",
+  },
 };
 
 export function StatusChip({ status }: { status: VideoStatus }) {

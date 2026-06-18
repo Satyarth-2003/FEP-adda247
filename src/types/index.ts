@@ -4,7 +4,8 @@ export type VideoStatus =
   | "uploaded"
   | "analyzing"
   | "gradi_done"
-  | "manager_rated";
+  | "manager_rated"
+  | "no_transcript";
 
 export interface User {
   userId: string;

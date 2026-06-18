@@ -413,13 +413,23 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                             {/* No Gradi yet */}
                             {!data.analysis && (
                               <div style={{ background: "var(--bg)", border: "1px dashed var(--border)", borderRadius: 12, padding: "24px", textAlign: "center" }} className="space-y-4">
-                                {triggeringAnalysis ? (
-                                  <Loader2 className="h-5 w-5 animate-spin text-fg-muted mx-auto mb-2" />
+                                {data.video.status === "no_transcript" ? (
+                                  <>
+                                    <div className="text-xl mb-1">⚠️</div>
+                                    <p className="text-sm font-medium text-fg-muted">No Transcript Available</p>
+                                    <p className="text-[11px] text-fg-dim">Gradi AI could not analyze this video because YouTube has no captions/subtitles generated for it yet.</p>
+                                  </>
                                 ) : (
-                                  <div className="text-xl mb-1">🤖</div>
+                                  <>
+                                    {triggeringAnalysis ? (
+                                      <Loader2 className="h-5 w-5 animate-spin text-fg-muted mx-auto mb-2" />
+                                    ) : (
+                                      <div className="text-xl mb-1">🤖</div>
+                                    )}
+                                    <p className="text-sm font-medium text-fg-muted">Gradi AI Analysis is Pending</p>
+                                    <p className="text-[11px] text-fg-dim">Usually takes 20-40 seconds once started.</p>
+                                  </>
                                 )}
-                                <p className="text-sm font-medium text-fg-muted">Gradi AI Analysis is Pending</p>
-                                <p className="text-[11px] text-fg-dim">Usually takes 20-40 seconds once started.</p>
                                 <button
                                   onClick={handleTriggerAnalysis}
                                   disabled={triggeringAnalysis}
@@ -431,7 +441,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                       Analyzing Video...
                                     </>
                                   ) : (
-                                    "Analyze with Gradi AI"
+                                    data.video.status === "no_transcript" ? "Retry Analysis" : "Analyze with Gradi AI"
                                   )}
                                 </button>
                               </div>

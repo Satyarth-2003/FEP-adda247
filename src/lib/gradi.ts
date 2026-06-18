@@ -120,8 +120,19 @@ export async function processPendingQueue() {
             })
           );
           console.log(`[Queue] Successfully completed analysis for video: ${v.videoId}`);
-        } catch (err) {
+        } catch (err: any) {
           console.error(`[Queue] Gradi analysis failed for ${v.videoId}:`, err);
+          const errorMsg = err?.message || "";
+          const statusVal = errorMsg.toLowerCase().includes("transcript") || errorMsg.includes("analysis") ? "no_transcript" : "no_transcript";
+          await ddb.send(
+            new UpdateCommand({
+              TableName: TABLES.VIDEOS,
+              Key: { facultyId: v.facultyId, videoId: v.videoId },
+              UpdateExpression: "SET #s = :s",
+              ExpressionAttributeNames: { "#s": "status" },
+              ExpressionAttributeValues: { ":s": statusVal },
+            })
+          ).catch(() => {});
         }
         // Small cooldown to prevent rate limiting
         await new Promise(resolve => setTimeout(resolve, 2000));
