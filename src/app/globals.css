@@ -195,3 +195,17 @@ body {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* ── Mobile iOS / Android optimization ───────────────────────── */
+@media (max-width: 767px) {
+  /* Prevent iOS auto-zooming on focus by forcing 16px font-size */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Optimize padding and layout spacing for small viewports */
+  .mx-auto {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
