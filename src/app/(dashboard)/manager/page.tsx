@@ -1275,21 +1275,6 @@ function MarchEduSkillDashboard() {
                       <p className="text-sm font-medium text-fg truncate">{row.name}</p>
                       <p className="text-[10px] text-fg-muted truncate">{row.email}</p>
                     </div>
-
-                    <div className="flex items-center gap-3 shrink-0 text-right">
-                      <div>
-                        <p className="text-mono text-xs font-bold text-emerald-400">{row.installs}</p>
-                        <p className="text-[8px] uppercase tracking-wider text-fg-dim">Installs</p>
-                      </div>
-                      <div>
-                        <p className="text-mono text-xs font-bold text-blue-400">{row.views}</p>
-                        <p className="text-[8px] uppercase tracking-wider text-fg-dim">Views</p>
-                      </div>
-                      <div>
-                        <p className="text-mono text-xs font-bold text-violet-400">{row.subscribersGained}</p>
-                        <p className="text-[8px] uppercase tracking-wider text-fg-dim">Subs</p>
-                      </div>
-                    </div>
                   </motion.button>
                 );
               })}
