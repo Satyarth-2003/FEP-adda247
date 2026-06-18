@@ -9,7 +9,7 @@ import { VideoCard } from "@/components/VideoCard";
 import { VideoDrawer } from "@/components/VideoDrawer";
 import { VideoUploader } from "@/components/VideoUploader";
 import type { Subject, Video, GradiAnalysis, JWTPayload } from "@/types";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface FacultyStats {
@@ -63,6 +63,7 @@ export default function FacultyDashboard() {
   const [activeSubject, setActiveSubject] = useState<string>("all");
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const facultyId = searchParams ? searchParams.get("facultyId") : null;
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -102,6 +103,12 @@ export default function FacultyDashboard() {
   const user = meQ.data?.user;
 
   const isOwnProfile = user?.role === "eduskill_faculty" && (!facultyId || facultyId === user?.userId);
+
+  useEffect(() => {
+    if (user && user.role !== "eduskill_faculty" && !facultyId) {
+      router.replace("/manager");
+    }
+  }, [user, facultyId, router]);
 
   useEffect(() => {
     if (stats && !hasCheckedTracker && isOwnProfile) {

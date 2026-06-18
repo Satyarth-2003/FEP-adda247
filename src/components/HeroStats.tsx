@@ -41,7 +41,7 @@ export function HeroStats({
   teachingSubject,
   verticals,
 }: HeroStatsProps) {
-  const hasCachedStats = ytStatsSyncedAt !== null && ytStatsSyncedAt !== undefined && ytStatsSyncedAt !== "";
+  const hasCachedStats = (ytStatsSyncedAt !== null && ytStatsSyncedAt !== undefined && ytStatsSyncedAt !== "") || totalVideos === 0;
 
   return (
     <motion.div
