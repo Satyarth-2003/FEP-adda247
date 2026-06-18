@@ -71,6 +71,8 @@ export default function FacultyDashboard() {
   const [editDob, setEditDob] = useState("");
   const [editSubjects, setEditSubjects] = useState<string[]>([]);
   const [editAvatar, setEditAvatar] = useState("");
+  const [editGender, setEditGender] = useState("");
+  const [editTeachingSubject, setEditTeachingSubject] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
   const [showTrackerModal, setShowTrackerModal] = useState(false);
@@ -123,6 +125,8 @@ export default function FacultyDashboard() {
       setEditDob(stats.dob || "");
       setEditSubjects(stats.subjects || []);
       setEditAvatar(stats.avatarUrl || "");
+      setEditGender((stats as any).gender || "");
+      setEditTeachingSubject((stats as any).teachingSubject || "");
     }
   }, [stats]);
 
@@ -139,6 +143,8 @@ export default function FacultyDashboard() {
           dob: editDob || undefined,
           subjects: editSubjects,
           avatarUrl: editAvatar || undefined,
+          gender: editGender || undefined,
+          teachingSubject: editTeachingSubject || undefined,
         }),
       });
       if (res.ok) {
@@ -226,6 +232,10 @@ export default function FacultyDashboard() {
           totalLikes={stats?.totalLikes ?? 0}
           subscribers={stats?.subscribers ?? 0}
           ytStatsSyncedAt={stats?.ytStatsSyncedAt}
+          age={stats?.age}
+          gender={(stats as any)?.gender}
+          teachingSubject={(stats as any)?.teachingSubject}
+          verticals={stats?.subjects}
         />
       )}
 
@@ -296,13 +306,36 @@ export default function FacultyDashboard() {
                       placeholder="Age"
                     />
                   </div>
-                  <div className="space-y-1.5">
+                   <div className="space-y-1.5">
                     <label className="text-[11px] font-medium text-fg-muted uppercase tracking-wider">Date of Birth (DOB)</label>
                     <input
                       type="date"
                       value={editDob}
                       onChange={(e) => setEditDob(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-bg-elev/40 px-3 py-2 text-sm outline-none focus:border-fg/30 text-white"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-fg-muted uppercase tracking-wider">Gender</label>
+                    <select
+                      value={editGender}
+                      onChange={(e) => setEditGender(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-[#181a20] px-3 py-2 text-sm outline-none focus:border-fg/30 text-white"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-fg-muted uppercase tracking-wider">Subject (Teaching)</label>
+                    <input
+                      type="text"
+                      value={editTeachingSubject}
+                      onChange={(e) => setEditTeachingSubject(e.target.value)}
                       className="w-full rounded-lg border border-border bg-bg-elev/40 px-3 py-2 text-sm outline-none focus:border-fg/30"
+                      placeholder="e.g. Maths, Physics"
                     />
                   </div>
 

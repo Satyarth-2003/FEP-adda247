@@ -22,6 +22,7 @@ export interface User {
   avatarUrl?: string;
   age?: number;
   dob?: string;
+  gender?: string;
   createdAt: string;
 }
 

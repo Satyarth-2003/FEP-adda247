@@ -43,7 +43,7 @@ export async function PUT(req: Request) {
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const body = await req.json();
-  const { userId, name, age, dob, subjects, avatarUrl } = body;
+  const { userId, name, age, dob, subjects, avatarUrl, gender } = body;
 
   // Faculty can only update themselves. Managers/admins can update anyone.
   const targetUserId = userId || user.userId;
@@ -60,6 +60,7 @@ export async function PUT(req: Request) {
   if (dob !== undefined) updateFields.dob = dob;
   if (subjects !== undefined) updateFields.subjects = subjects;
   if (avatarUrl !== undefined) updateFields.avatarUrl = avatarUrl;
+  if (gender !== undefined) updateFields.gender = gender;
 
   if (Object.keys(updateFields).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });

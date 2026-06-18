@@ -20,6 +20,10 @@ interface HeroStatsProps {
   totalLikes?: number;
   subscribers?: number;
   ytStatsSyncedAt?: string | null;
+  age?: number;
+  gender?: string;
+  teachingSubject?: string;
+  verticals?: string[];
 }
 
 export function HeroStats({
@@ -32,6 +36,10 @@ export function HeroStats({
   totalLikes = 0,
   subscribers = 0,
   ytStatsSyncedAt,
+  age,
+  gender,
+  teachingSubject,
+  verticals,
 }: HeroStatsProps) {
   const hasCachedStats = ytStatsSyncedAt !== null && ytStatsSyncedAt !== undefined && ytStatsSyncedAt !== "";
 
@@ -56,8 +64,33 @@ export function HeroStats({
             <p className="mt-1 text-sm text-fg-muted">
               Here&apos;s how your content is performing.
             </p>
+            
+            {/* Input taken metadata */}
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted">
+              {age && (
+                <span className="bg-bg-elev/50 px-2 py-0.5 rounded border border-border/30">
+                  <strong className="text-fg-dim font-medium">Age:</strong> {age}
+                </span>
+              )}
+              {gender && (
+                <span className="bg-bg-elev/50 px-2 py-0.5 rounded border border-border/30">
+                  <strong className="text-fg-dim font-medium">Gender:</strong> {gender}
+                </span>
+              )}
+              {teachingSubject && (
+                <span className="bg-bg-elev/50 px-2 py-0.5 rounded border border-border/30">
+                  <strong className="text-fg-dim font-medium">Subject:</strong> {teachingSubject}
+                </span>
+              )}
+              {verticals && verticals.length > 0 && (
+                <span className="bg-bg-elev/50 px-2 py-0.5 rounded border border-border/30">
+                  <strong className="text-fg-dim font-medium">Vertical:</strong> {verticals.join(", ")}
+                </span>
+              )}
+            </div>
+
             {ytStatsSyncedAt && (
-              <p className="mt-1 text-[10px] text-fg-dim">
+              <p className="mt-2 text-[10px] text-fg-dim">
                 YT stats synced {new Date(ytStatsSyncedAt).toLocaleTimeString()}
               </p>
             )}

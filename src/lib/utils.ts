@@ -19,13 +19,33 @@ export function scoreTone(score: number): "emerald" | "amber" | "rose" {
 
 export function extractYouTubeId(url: string | null | undefined): string | null {
   if (!url || typeof url !== "string") return null;
-  const patterns = [
-    /(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/,
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
+  const trimmed = url.trim();
+
+  // If it's already a raw 11-char YouTube ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return trimmed;
   }
+
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,                         // watch?v=ID or &v=ID
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,                    // youtu.be/ID
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,          // embed/ID
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,         // shorts/ID
+    /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,           // live/ID
+    /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,              // v/ID
+    /youtube-nocookie\.com\/embed\/([a-zA-Z0-9_-]{11})/,    // nocookie embed
+  ];
+
+  for (const p of patterns) {
+    const m = trimmed.match(p);
+    if (m && m[1]) return m[1];
+  }
+
+  // Fallback pattern matching
+  const fallbackPattern = /(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/;
+  const fallbackMatch = trimmed.match(fallbackPattern);
+  if (fallbackMatch && fallbackMatch[1]) return fallbackMatch[1];
+
   return null;
 }
 

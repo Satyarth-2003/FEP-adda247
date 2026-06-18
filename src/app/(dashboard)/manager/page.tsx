@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Users, Sparkles, LayoutGrid, BarChart3, Loader2, Play, Link as LinkIcon, Eye, ThumbsUp, ClipboardList } from "lucide-react";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -376,7 +377,12 @@ export default function ManagerDashboard() {
                     Faculty Detail
                   </p>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                    {selectedFacultyRow.name}
+                    <Link
+                      href={`/faculty?facultyId=${selectedFaculty}`}
+                      className="hover:underline hover:text-fg/80"
+                    >
+                      {selectedFacultyRow.name}
+                    </Link>
                   </h2>
                   <div className="mt-1 flex items-center gap-3 text-[11px] text-fg-muted">
                     <span>{selectedFacultyRow.email}</span>
@@ -1021,6 +1027,8 @@ function MarchEduSkillDashboard() {
   const [editDob, setEditDob] = useState("");
   const [editSubjects, setEditSubjects] = useState<string[]>([]);
   const [editAvatar, setEditAvatar] = useState("");
+  const [editGender, setEditGender] = useState("");
+  const [editTeachingSubject, setEditTeachingSubject] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
 
@@ -1080,6 +1088,8 @@ function MarchEduSkillDashboard() {
       setEditDob(selectedFacultyData.dob || "");
       setEditSubjects(selectedFacultyData.subjects || []);
       setEditAvatar(selectedFacultyData.avatarUrl || "");
+      setEditGender(selectedFacultyData.gender || "");
+      setEditTeachingSubject(selectedFacultyData.teachingSubject || "");
       setIsEditingProfile(false);
     }
   }, [selectedFacultyData]);
@@ -1140,6 +1150,8 @@ function MarchEduSkillDashboard() {
           dob: editDob || undefined,
           subjects: editSubjects,
           avatarUrl: editAvatar || undefined,
+          gender: editGender || undefined,
+          teachingSubject: editTeachingSubject || undefined,
         }),
       });
       if (res.ok) {
@@ -1333,6 +1345,22 @@ function MarchEduSkillDashboard() {
                         <div>
                           <label className="block text-[10px] uppercase tracking-wider text-fg-muted mb-1 font-semibold">Profile Photo</label>
                           <input type="file" accept="image/*" onChange={handlePhotoUpload} className="w-full text-xs text-fg-muted file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-[11px] file:font-semibold file:bg-bg-elev file:text-fg hover:file:opacity-80 cursor-pointer" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-fg-muted mb-1 font-semibold">Gender</label>
+                          <select value={editGender} onChange={e => setEditGender(e.target.value)} className="w-full rounded-lg border border-border bg-[#181a20] px-3 py-2 text-xs outline-none focus:border-fg/30 text-white">
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-fg-muted mb-1 font-semibold">Subject (Teaching)</label>
+                          <input type="text" value={editTeachingSubject} onChange={e => setEditTeachingSubject(e.target.value)} className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs outline-none focus:border-fg/30" placeholder="e.g. Maths, Physics" />
                         </div>
                       </div>
 

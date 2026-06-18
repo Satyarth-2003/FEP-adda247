@@ -43,14 +43,21 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
     setLoading(true); setData(null); setShowPreview(false); setShowFullSummary(false);
     setRatings({ ...EMPTY }); setNotes(""); setSavedAt(null);
     fetch(`/api/videos/${videoId}`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error("Failed to fetch video details");
+        return r.json();
+      })
       .then((d: DrawerData) => {
+        if (!d || (d as any).error) throw new Error((d as any).error || "Invalid response");
         setData(d);
         const own = d.managerRatings?.find((r: ManagerRating) => r.managerId === "shared") || d.managerRatings?.[0];
         if (own) {
           setRatings({ boardWork: Number(own.boardWork) ?? 0, visualTLM: Number(own.visualTLM) ?? 0, energy: Number(own.energy) ?? 0, delivery: Number(own.delivery) ?? 0, hook: Number(own.hook) ?? 0 });
           setNotes(own.notes ?? "");
         }
+      })
+      .catch(err => {
+        console.error("Error loading video details in drawer:", err);
       })
       .finally(() => setLoading(false));
   }, [videoId, managerMode, managerId]);
@@ -209,11 +216,11 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                            <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-[10px] uppercase tracking-wider text-fg-muted">{data.video.subject}</span>
-                            {data.video.facultyName && <span className="text-[11px] text-fg-muted">by {data.video.facultyName}</span>}
+                            <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-[10px] uppercase tracking-wider text-fg-muted">{data?.video?.subject}</span>
+                            {data?.video?.facultyName && <span className="text-[11px] text-fg-muted">by {data?.video?.facultyName}</span>}
                           </div>
-                          <h2 className="text-base md:text-lg font-semibold tracking-tight leading-snug">{data.video.title}</h2>
-                          <a href={data.video.youtubeUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-[11px] text-fg-muted hover:text-fg">
+                          <h2 className="text-base md:text-lg font-semibold tracking-tight leading-snug">{data?.video?.title}</h2>
+                          <a href={data?.video?.youtubeUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-[11px] text-fg-muted hover:text-fg">
                             <ExternalLink className="h-3 w-3" /> Watch on YouTube
                           </a>
                         </div>

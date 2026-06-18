@@ -1,4 +1,4 @@
-"use client";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingUp, Video as VideoIcon } from "lucide-react";
 import { scoreColor, cn } from "@/lib/utils";
