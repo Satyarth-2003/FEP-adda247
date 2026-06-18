@@ -6,7 +6,7 @@ COPY package.json package-lock.json ./
 
 # --- Dependencies Stage ---
 FROM base AS deps
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # --- Build Stage ---
 FROM base AS builder
