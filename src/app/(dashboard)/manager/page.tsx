@@ -592,9 +592,13 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
               </div>
 
               <div className="text-center">
-                {v.status === "manager_rated" ? (
-                  <span className="text-mono text-xs font-bold" style={{ color: "var(--emerald)" }}>✓</span>
-                ) : <span className="text-[10px] text-fg-dim">pending</span>}
+                {(v as any).managerRating?.total !== undefined ? (
+                  <span className="text-mono text-sm font-semibold text-fg">
+                    {(v as any).managerRating.total.toFixed(1)}<span className="text-[9px] text-fg-dim font-normal">/25</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-fg-dim">pending</span>
+                )}
               </div>
 
               {/* Status */}

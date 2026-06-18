@@ -333,6 +333,35 @@ export async function GET(req: Request) {
   }
 
   const analysisMap = new Map(analysisChunks.map((a) => [a.videoId, a]));
+
+  // ── Fetch manager ratings for these videos ──────────────────────
+  const ratings: ManagerRating[] = [];
+  const videoIds = videos.map((v) => v.videoId);
+  if (videoIds.length > 0) {
+    const ratingPromises = videoIds.map((vId) =>
+      ddb.send(
+        new QueryCommand({
+          TableName: TABLES.RATINGS,
+          KeyConditionExpression: "videoId = :v",
+          ExpressionAttributeValues: { ":v": vId },
+        })
+      ).catch((e) => {
+        console.error(`Error querying ratings for ${vId}:`, e);
+        return { Items: [] };
+      })
+    );
+    const ratingResults = await Promise.all(ratingPromises);
+    ratingResults.forEach((r) => {
+      if (r.Items) {
+        ratings.push(...(r.Items as ManagerRating[]));
+      }
+    });
+  }
+  const ratingMap = new Map<string, ManagerRating[]>();
+  for (const r of ratings) {
+    if (!ratingMap.has(r.videoId)) ratingMap.set(r.videoId, []);
+    ratingMap.get(r.videoId)!.push(r);
+  }
   const ratedCount = videos.filter((v) => v.status === "manager_rated").length;
   const scores = analysisChunks
     .map((a) => a.gradiScore)
@@ -381,10 +410,15 @@ export async function GET(req: Request) {
     subscribers: ytCache?.subscribers ?? 0,
     ytStatsSyncedAt: ytCache?.syncedAt ?? null,
     bySubject,
-    videos: videos.map((v) => ({
-      ...v,
-      analysis: analysisMap.get(v.videoId) ?? null,
-    })),
+    videos: videos.map((v) => {
+      const vRatings = ratingMap.get(v.videoId) || [];
+      const own = vRatings.find((r) => r.managerId === "shared") || vRatings[0];
+      return {
+        ...v,
+        analysis: analysisMap.get(v.videoId) ?? null,
+        managerRating: own ?? null,
+      };
+    }),
   });
 }
 
