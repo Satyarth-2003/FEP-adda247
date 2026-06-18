@@ -36,7 +36,30 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showFullSummary, setShowFullSummary] = useState(false);
+  const [triggeringAnalysis, setTriggeringAnalysis] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function handleTriggerAnalysis() {
+    if (!videoId) return;
+    setTriggeringAnalysis(true);
+    try {
+      const res = await fetch(`/api/videos/${videoId}`, { method: "POST" });
+      if (res.ok) {
+        // Fetch updated video details
+        const detailsRes = await fetch(`/api/videos/${videoId}`);
+        const d = await detailsRes.json();
+        setData(d);
+        onRated?.();
+      } else {
+        alert("Failed to trigger Gradi analysis");
+      }
+    } catch (e) {
+      console.error("Manual analysis trigger error:", e);
+      alert("Failed to trigger Gradi analysis");
+    } finally {
+      setTriggeringAnalysis(false);
+    }
+  }
 
   useEffect(() => {
     if (!videoId) { setData(null); setShowPreview(false); setShowFullSummary(false); return; }
@@ -317,8 +340,17 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                             {data.analysis && (
                               <div className="space-y-4">
                                 <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
-                                  <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 8 }}>Gradi AI &middot; {(data.analysis.gradiScore * 5).toFixed(1)}/25</p>
-                                  <p className="text-sm font-medium text-fg leading-snug">{data.analysis.oneLiner || data.analysis.scoreReason}</p>
+                                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-border/40">
+                                    <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)" }}>Gradi AI &middot; {(data.analysis.gradiScore * 5).toFixed(1)}/25</p>
+                                    <button
+                                      onClick={handleTriggerAnalysis}
+                                      disabled={triggeringAnalysis}
+                                      className="text-[10px] text-fg-muted hover:text-fg hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 transition-colors"
+                                    >
+                                      {triggeringAnalysis ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "🔄 Re-analyze"}
+                                    </button>
+                                  </div>
+                                  <p className="text-sm font-medium text-fg leading-snug mt-1.5">{data.analysis.oneLiner || data.analysis.scoreReason}</p>
                                   {data.analysis.summary && (
                                     <>
                                       <AnimatePresence>
@@ -380,10 +412,28 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
 
                             {/* No Gradi yet */}
                             {!data.analysis && (
-                              <div style={{ background: "var(--bg)", border: "1px dashed var(--border)", borderRadius: 12, padding: "24px", textAlign: "center" }}>
-                                <Loader2 className="h-5 w-5 animate-spin text-fg-muted mx-auto mb-3" />
-                                <p className="text-sm text-fg-muted">Gradi AI is analyzing this video</p>
-                                <p className="text-[11px] text-fg-dim mt-1">Usually takes 20-40 seconds.</p>
+                              <div style={{ background: "var(--bg)", border: "1px dashed var(--border)", borderRadius: 12, padding: "24px", textAlign: "center" }} className="space-y-4">
+                                {triggeringAnalysis ? (
+                                  <Loader2 className="h-5 w-5 animate-spin text-fg-muted mx-auto mb-2" />
+                                ) : (
+                                  <div className="text-xl mb-1">🤖</div>
+                                )}
+                                <p className="text-sm font-medium text-fg-muted">Gradi AI Analysis is Pending</p>
+                                <p className="text-[11px] text-fg-dim">Usually takes 20-40 seconds once started.</p>
+                                <button
+                                  onClick={handleTriggerAnalysis}
+                                  disabled={triggeringAnalysis}
+                                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-fg px-5 py-2 text-xs font-semibold text-bg hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer border-none"
+                                >
+                                  {triggeringAnalysis ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Analyzing Video...
+                                    </>
+                                  ) : (
+                                    "Analyze with Gradi AI"
+                                  )}
+                                </button>
                               </div>
                             )}
                           </>

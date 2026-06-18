@@ -123,3 +123,75 @@ export async function DELETE(
   return NextResponse.json({ success: true, message: "Video deleted successfully" });
 }
 
+// POST — Trigger manual Gradi analysis for a video
+export async function POST(
+  _req: Request,
+  ctx: { params: Promise<{ videoId: string }> }
+) {
+  const { after } = await import("next/server");
+  const { analyzeWithGradi } = await import("@/lib/gradi");
+  const { PutCommand, UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
+
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
+  const { videoId } = await ctx.params;
+
+  // 1. Find the video to get its youtubeUrl and facultyId
+  const scanRes = await ddb.send(
+    new ScanCommand({
+      TableName: TABLES.VIDEOS,
+      FilterExpression: "videoId = :v",
+      ExpressionAttributeValues: { ":v": videoId },
+    })
+  );
+
+  const video = scanRes.Items?.[0] as Video | undefined;
+  if (!video) return NextResponse.json({ error: "Video not found" }, { status: 404 });
+
+  // Update status to analyzing
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TABLES.VIDEOS,
+      Key: { facultyId: video.facultyId, videoId },
+      UpdateExpression: "SET #s = :s",
+      ExpressionAttributeNames: { "#s": "status" },
+      ExpressionAttributeValues: { ":s": "analyzing" },
+    })
+  );
+
+  // Trigger analysis in background
+  after(async () => {
+    try {
+      const analysis = await analyzeWithGradi(video.youtubeUrl, videoId);
+      await ddb.send(
+        new PutCommand({ TableName: TABLES.ANALYSES, Item: analysis })
+      );
+      await ddb.send(
+        new UpdateCommand({
+          TableName: TABLES.VIDEOS,
+          Key: { facultyId: video.facultyId, videoId },
+          UpdateExpression: "SET #s = :s",
+          ExpressionAttributeNames: { "#s": "status" },
+          ExpressionAttributeValues: { ":s": "gradi_done" },
+        })
+      );
+    } catch (e) {
+      console.error("Manual Gradi analysis failed for", videoId, e);
+      // Fallback: set back to gradi_done or error state so it doesn't spin forever
+      await ddb.send(
+        new UpdateCommand({
+          TableName: TABLES.VIDEOS,
+          Key: { facultyId: video.facultyId, videoId },
+          UpdateExpression: "SET #s = :s",
+          ExpressionAttributeNames: { "#s": "status" },
+          ExpressionAttributeValues: { ":s": "gradi_done" },
+        })
+      ).catch(() => {});
+    }
+  });
+
+  return NextResponse.json({ success: true, message: "Analysis triggered" });
+}
+
+
