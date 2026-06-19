@@ -228,8 +228,10 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
     }
   }
 
+  const standardizedUrl = `https://www.youtube.com/watch?v=${newYtId}`;
+
   // Fetch YouTube metadata
-  const ytMetadata = await fetchYouTubeMetadata(youtubeUrl);
+  const ytMetadata = await fetchYouTubeMetadata(standardizedUrl);
   if (ytMetadata) {
     if (!title || title === "Untitled Video") {
       resolvedTitle = ytMetadata.title;
@@ -241,11 +243,11 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
     facultyId: targetFacultyId,
     facultyName: targetFacultyName,
     videoId,
-    youtubeUrl,
+    youtubeUrl: standardizedUrl,
     subject: resolvedSubject ?? resolvedSubjectId,
     subjectId: resolvedSubjectId,
     title: resolvedTitle,
-    thumbnailUrl: ytMetadata?.thumbnailUrl || youtubeThumb(youtubeUrl) || undefined,
+    thumbnailUrl: ytMetadata?.thumbnailUrl || youtubeThumb(standardizedUrl) || undefined,
     duration: ytMetadata?.duration || undefined,
     views: ytMetadata?.views || 0,
     likes: ytMetadata?.likes || 0,
@@ -259,7 +261,7 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
   // `after()` works on Vercel (the runtime keeps the function alive) and locally.
   after(async () => {
     try {
-      const analysis = await analyzeWithGradi(youtubeUrl, videoId);
+      const analysis = await analyzeWithGradi(standardizedUrl, videoId);
       await ddb.send(
         new PutCommand({ TableName: TABLES.ANALYSES, Item: analysis })
       );
@@ -272,8 +274,19 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
           ExpressionAttributeValues: { ":s": "gradi_done" },
         })
       );
-    } catch (e) {
+    } catch (e: any) {
       console.error("Gradi analysis failed for", videoId, e);
+      const errorMsg = e?.message || "";
+      const statusVal = errorMsg.toLowerCase().includes("transcript") || errorMsg.includes("analysis") ? "no_transcript" : "no_transcript";
+      await ddb.send(
+        new UpdateCommand({
+          TableName: TABLES.VIDEOS,
+          Key: { facultyId: targetFacultyId, videoId },
+          UpdateExpression: "SET #s = :s",
+          ExpressionAttributeNames: { "#s": "status" },
+          ExpressionAttributeValues: { ":s": statusVal },
+        })
+      ).catch(() => {});
     }
   });
 

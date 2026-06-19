@@ -1,4 +1,5 @@
 import type { GradiAnalysis } from "@/types";
+import { extractYouTubeId } from "./utils";
 
 const GRADI_URL =
   process.env.GRADI_API_URL || "https://gradi.ai/api/analyze-video";
@@ -22,11 +23,14 @@ export async function analyzeWithGradi(
   youtubeUrl: string,
   videoId: string
 ): Promise<Omit<GradiAnalysis, "videoId"> & { videoId: string }> {
+  const ytId = extractYouTubeId(youtubeUrl);
+  const cleanUrl = ytId ? `https://www.youtube.com/watch?v=${ytId}` : youtubeUrl;
+
   const res = await fetch(GRADI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      youtube_url: youtubeUrl,
+      youtube_url: cleanUrl,
       analysis_language: "hinglish",
       category: null,
     }),
