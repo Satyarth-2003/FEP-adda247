@@ -19,6 +19,49 @@ interface GradiRawResponse {
   };
 }
 
+export async function hasYouTubeTranscript(ytId: string): Promise<boolean> {
+  const apiKey = process.env.YOUTUBE_API_KEY || "AIzaSyB7u1Gb5DbKiI_LgLBAsnfjG4JouBkTpAs";
+  
+  // 1. Try YouTube Data API captions list
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${ytId}&key=${apiKey}`
+    );
+    if (res.ok) {
+      const json = await res.json();
+      if (json.items && json.items.length > 0) {
+        console.log(`[Transcript Check] YouTube API found captions for ${ytId}`);
+        return true;
+      }
+    }
+  } catch (e) {
+    console.error("hasYouTubeTranscript API check error:", e);
+  }
+
+  // 2. Try scraping watch page for captionTracks (fallback)
+  try {
+    const url = `https://www.youtube.com/watch?v=${ytId}`;
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      }
+    });
+    if (response.ok) {
+      const html = await response.text();
+      if (html.includes("captionTracks") || html.includes("playerCaptionsTracklistRenderer")) {
+        console.log(`[Transcript Check] Watch page scraping found captions for ${ytId}`);
+        return true;
+      }
+    }
+  } catch (e) {
+    console.error("hasYouTubeTranscript scraping fallback error:", e);
+  }
+
+  console.log(`[Transcript Check] No captions found for ${ytId}`);
+  return false;
+}
+
 export async function analyzeWithGradi(
   youtubeUrl: string,
   videoId: string
@@ -97,6 +140,28 @@ export async function processPendingQueue() {
       console.log(`[Queue] Found ${pendingVideos.length} pending videos. Starting sequential processing...`);
 
       for (const v of pendingVideos) {
+        const ytId = extractYouTubeId(v.youtubeUrl);
+        if (!ytId) {
+          console.log(`[Queue] Skipped video with invalid URL: ${v.videoId} (${v.youtubeUrl})`);
+          continue;
+        }
+
+        console.log(`[Queue] Checking transcript status for: ${v.videoId} (YouTube ID: ${ytId})`);
+        const hasTranscript = await hasYouTubeTranscript(ytId);
+        if (!hasTranscript) {
+          console.log(`[Queue] No transcript available. Marking as no_transcript directly: ${v.videoId}`);
+          await ddb.send(
+            new UpdateCommand({
+              TableName: TABLES.VIDEOS,
+              Key: { facultyId: v.facultyId, videoId: v.videoId },
+              UpdateExpression: "SET #s = :s",
+              ExpressionAttributeNames: { "#s": "status" },
+              ExpressionAttributeValues: { ":s": "no_transcript" },
+            })
+          ).catch(() => {});
+          continue;
+        }
+
         console.log(`[Queue] Starting analysis for video: ${v.videoId} (${v.youtubeUrl})`);
         try {
           // Temporarily set to analyzing to mark it

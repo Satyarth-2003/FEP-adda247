@@ -10,7 +10,7 @@ import {
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import { extractYouTubeId, youtubeThumb } from "@/lib/utils";
-import { analyzeWithGradi, processPendingQueue } from "@/lib/gradi";
+import { analyzeWithGradi, processPendingQueue, hasYouTubeTranscript } from "@/lib/gradi";
 import type { Video } from "@/types";
 
 // GET — list videos. Faculty: own only. Manager: all (filterable).
@@ -239,6 +239,8 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
   }
 
   const videoId = uuid();
+  const hasTranscript = await hasYouTubeTranscript(newYtId);
+
   const video: Video = {
     facultyId: targetFacultyId,
     facultyName: targetFacultyName,
@@ -252,43 +254,45 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
     views: ytMetadata?.views || 0,
     likes: ytMetadata?.likes || 0,
     uploadedAt: new Date().toISOString(),
-    status: "analyzing",
+    status: hasTranscript ? "analyzing" : "no_transcript",
   };
 
   await ddb.send(new PutCommand({ TableName: TABLES.VIDEOS, Item: video }));
 
-  // Schedule Gradi analysis to run AFTER the response is sent.
-  // `after()` works on Vercel (the runtime keeps the function alive) and locally.
-  after(async () => {
-    try {
-      const analysis = await analyzeWithGradi(standardizedUrl, videoId);
-      await ddb.send(
-        new PutCommand({ TableName: TABLES.ANALYSES, Item: analysis })
-      );
-      await ddb.send(
-        new UpdateCommand({
-          TableName: TABLES.VIDEOS,
-          Key: { facultyId: targetFacultyId, videoId },
-          UpdateExpression: "SET #s = :s",
-          ExpressionAttributeNames: { "#s": "status" },
-          ExpressionAttributeValues: { ":s": "gradi_done" },
-        })
-      );
-    } catch (e: any) {
-      console.error("Gradi analysis failed for", videoId, e);
-      const errorMsg = e?.message || "";
-      const statusVal = errorMsg.toLowerCase().includes("transcript") || errorMsg.includes("analysis") ? "no_transcript" : "no_transcript";
-      await ddb.send(
-        new UpdateCommand({
-          TableName: TABLES.VIDEOS,
-          Key: { facultyId: targetFacultyId, videoId },
-          UpdateExpression: "SET #s = :s",
-          ExpressionAttributeNames: { "#s": "status" },
-          ExpressionAttributeValues: { ":s": statusVal },
-        })
-      ).catch(() => {});
-    }
-  });
+  if (hasTranscript) {
+    // Schedule Gradi analysis to run AFTER the response is sent.
+    // `after()` works on Vercel (the runtime keeps the function alive) and locally.
+    after(async () => {
+      try {
+        const analysis = await analyzeWithGradi(standardizedUrl, videoId);
+        await ddb.send(
+          new PutCommand({ TableName: TABLES.ANALYSES, Item: analysis })
+        );
+        await ddb.send(
+          new UpdateCommand({
+            TableName: TABLES.VIDEOS,
+            Key: { facultyId: targetFacultyId, videoId },
+            UpdateExpression: "SET #s = :s",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: { ":s": "gradi_done" },
+          })
+        );
+      } catch (e: any) {
+        console.error("Gradi analysis failed for", videoId, e);
+        const errorMsg = e?.message || "";
+        const statusVal = errorMsg.toLowerCase().includes("transcript") || errorMsg.includes("analysis") ? "no_transcript" : "no_transcript";
+        await ddb.send(
+          new UpdateCommand({
+            TableName: TABLES.VIDEOS,
+            Key: { facultyId: targetFacultyId, videoId },
+            UpdateExpression: "SET #s = :s",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: { ":s": statusVal },
+          })
+        ).catch(() => {});
+      }
+    });
+  }
 
   return NextResponse.json({ video });
 }
