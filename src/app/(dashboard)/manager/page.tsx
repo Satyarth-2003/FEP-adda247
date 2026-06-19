@@ -579,7 +579,12 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
               {/* Title */}
               <div className="min-w-0 cursor-pointer" onClick={() => toggleExpand(v.videoId)}>
                 <p className="text-sm font-medium text-fg truncate">{v.title}</p>
-                <p className="text-[10px] text-fg-muted mt-0.5">{v.subject} · {formatDate(v.uploadedAt)}</p>
+                <p className="text-[10px] text-fg-muted mt-0.5">
+                  {v.subject} · {formatDate(v.uploadedAt)}
+                  {v.views !== undefined && ` · ${v.views} views`}
+                  {v.likes !== undefined && ` · ${v.likes} likes`}
+                  {v.duration && ` · ${v.duration}`}
+                </p>
               </div>
 
               {/* Gradi score /25 */}
@@ -902,10 +907,15 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
                   ? <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center text-fg-dim"><Play className="h-3 w-3" /></div>}
               </div>
-              {/* Title + date */}
+              {/* Title + date + stats */}
               <div className="min-w-0">
                 <p className="text-sm font-medium text-fg truncate">{v.title}</p>
-                <p className="text-[10px] text-fg-muted">{formatDate(v.uploadedAt)}</p>
+                <p className="text-[10px] text-fg-muted mt-0.5">
+                  {v.subject} · {formatDate(v.uploadedAt)}
+                  {v.views !== undefined && ` · ${v.views} views`}
+                  {v.likes !== undefined && ` · ${v.likes} likes`}
+                  {v.duration && ` · ${v.duration}`}
+                </p>
               </div>
               {/* Faculty */}
               <span className="text-[11px] text-fg-muted truncate">{v.facultyName ?? "—"}</span>
@@ -1469,6 +1479,12 @@ function MarchEduSkillDashboard() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-fg truncate">{v.title}</p>
+                          <p className="text-[10px] text-fg-muted mt-0.5">
+                            {v.subject}
+                            {v.views !== undefined && ` · ${v.views} views`}
+                            {v.likes !== undefined && ` · ${v.likes} likes`}
+                            {v.duration && ` · ${v.duration}`}
+                          </p>
                         </div>
                         <span className="text-[10px] text-fg-muted">{new Date(v.uploadedAt).toLocaleDateString()}</span>
                         <div className="text-right">

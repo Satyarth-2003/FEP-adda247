@@ -116,25 +116,43 @@ async function triggerBackgroundFacultyYTSync(facultyId: string, videos: Video[]
       for (const v of videos) {
         const ytId = extractYouTubeId(v.youtubeUrl);
         if (!ytId) continue;
-        const s = statsMap.get(ytId);
-        if (!s) continue;
+        const s = ytId ? statsMap.get(ytId) : null;
+        
+        if (s) {
+          totalViews += s.views;
+          totalLikes += s.likes;
+          if (!channelId && s.channelId) channelId = s.channelId;
 
-        totalViews += s.views;
-        totalLikes += s.likes;
-        if (!channelId && s.channelId) channelId = s.channelId;
-
-        if (v.views !== s.views || v.likes !== s.likes || (!v.duration && s.duration)) {
-          await ddb.send(new UpdateCommand({
-            TableName: TABLES.VIDEOS,
-            Key: { facultyId: v.facultyId, videoId: v.videoId },
-            UpdateExpression: "SET #views = :v, likes = :l, #dur = :d",
-            ExpressionAttributeNames: { "#views": "views", "#dur": "duration" },
-            ExpressionAttributeValues: { ":v": s.views, ":l": s.likes, ":d": s.duration || v.duration || "" },
-          })).catch(e => console.error(`[Background YT Sync] Video update failed ${v.videoId}:`, e));
+          if (v.views !== s.views || v.likes !== s.likes || (!v.duration && s.duration)) {
+            await ddb.send(new UpdateCommand({
+              TableName: TABLES.VIDEOS,
+              Key: { facultyId: v.facultyId, videoId: v.videoId },
+              UpdateExpression: "SET #views = :v, likes = :l, #dur = :d",
+              ExpressionAttributeNames: { "#views": "views", "#dur": "duration" },
+              ExpressionAttributeValues: { ":v": s.views, ":l": s.likes, ":d": s.duration || v.duration || "" },
+            })).catch(e => console.error(`[Background YT Sync] Video update failed ${v.videoId}:`, e));
+          }
+        } else {
+          // Fall back to stats already stored on the video item in the DB
+          totalViews += v.views ?? 0;
+          totalLikes += v.likes ?? 0;
         }
       }
 
-      const subscribers = channelId ? (channelSubsMap.get(channelId) ?? 0) : 0;
+      const currentCache = await getCachedYTStats(facultyId);
+      
+      let subscribers = channelId ? (channelSubsMap.get(channelId) ?? 0) : 0;
+      if (subscribers === 0 && currentCache?.subscribers) {
+        subscribers = currentCache.subscribers;
+      }
+      
+      if (totalViews === 0 && currentCache?.totalViews) {
+        totalViews = currentCache.totalViews;
+      }
+      if (totalLikes === 0 && currentCache?.totalLikes) {
+        totalLikes = currentCache.totalLikes;
+      }
+
       const syncedAt = new Date().toISOString();
 
       await ddb.send(new PutCommand({
