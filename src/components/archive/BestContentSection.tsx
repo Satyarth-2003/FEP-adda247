@@ -4,6 +4,7 @@ import { ExternalLink, Eye, Play, Plus, Trash2, Check, X } from "lucide-react";
 import { useState } from "react";
 import type { ArchiveBestContent } from "@/types/archive";
 import { youtubeThumb, cn } from "@/lib/utils";
+import { SafeThumbnail } from "../SafeThumbnail";
 
 interface Props {
   content: Record<string, ArchiveBestContent[]>;
@@ -117,15 +118,12 @@ export function BestContentSection({ content, editMode, onUpdate }: Props) {
                 className="group glass relative overflow-hidden rounded-xl">
                 <a href={c.link || undefined} target="_blank" rel="noopener noreferrer" className="block">
                   <div className="relative aspect-video overflow-hidden bg-bg-elev">
-                    {c.link && youtubeThumb(c.link) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={youtubeThumb(c.link)!} alt={c.topic}
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-fg-dim">
-                        <Play className="h-8 w-8" />
-                      </div>
-                    )}
+                    <SafeThumbnail
+                      src={c.link ? youtubeThumb(c.link) || undefined : undefined}
+                      alt={c.topic}
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      iconSize={32}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-bg-card via-transparent to-transparent" />
                     {c.views != null && (
                       <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-bg-card/80 backdrop-blur border border-border px-2 py-0.5 text-[10px] text-mono text-fg/85">

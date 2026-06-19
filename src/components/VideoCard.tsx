@@ -5,6 +5,7 @@ import type { Video, GradiAnalysis } from "@/types";
 import { ScoreRing } from "./ScoreRing";
 import { StatusChip } from "./StatusChip";
 import { relativeTime } from "@/lib/utils";
+import { SafeThumbnail } from "./SafeThumbnail";
 
 interface VideoCardProps {
   video: Video & { analysis?: GradiAnalysis | null };
@@ -23,18 +24,12 @@ export function VideoCard({ video, onClick, index = 0 }: VideoCardProps) {
       className="group glass relative overflow-hidden rounded-xl text-left transition-colors hover:border-fg/15"
     >
       <div className="relative aspect-video overflow-hidden bg-bg-elev">
-        {video.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={video.thumbnailUrl}
-            alt={video.title}
-            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-fg-dim">
-            <Play className="h-8 w-8" />
-          </div>
-        )}
+        <SafeThumbnail
+          src={video.thumbnailUrl}
+          alt={video.title}
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          iconSize={32}
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-bg-card via-transparent to-transparent" />
         <div className="absolute top-3 left-3">
           <StatusChip status={video.status} />

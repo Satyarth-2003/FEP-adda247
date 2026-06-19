@@ -14,6 +14,7 @@ import { ProgramAnalytics } from "@/components/ProgramAnalytics";
 import { VideoUploader } from "@/components/VideoUploader";
 import { cn, extractYouTubeId, formatDate } from "@/lib/utils";
 import type { Subject, Video, GradiAnalysis, JWTPayload } from "@/types";
+import { SafeThumbnail } from "@/components/SafeThumbnail";
 
 interface AggregateStats {
   leaderboard: {
@@ -566,14 +567,12 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
             >
               {/* Thumbnail */}
               <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
-                {thumbUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-fg-dim">
-                    <Play className="h-3 w-3" />
-                  </div>
-                )}
+                <SafeThumbnail
+                  src={thumbUrl || undefined}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  iconSize={12}
+                />
               </div>
 
               {/* Title */}
@@ -902,10 +901,12 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
             <div key={v.videoId} className="grid grid-cols-[44px_1fr_160px_100px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
               {/* Thumbnail */}
               <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
-                {v.thumbnailUrl
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-fg-dim"><Play className="h-3 w-3" /></div>}
+                <SafeThumbnail
+                  src={v.thumbnailUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  iconSize={12}
+                />
               </div>
               {/* Title + date + stats */}
               <div className="min-w-0">
@@ -1475,7 +1476,12 @@ function MarchEduSkillDashboard() {
                     {videos.map(v => (
                       <div key={v.videoId} className="grid grid-cols-[40px_1fr_120px_50px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center cursor-pointer" onClick={() => setOpenVideoId(v.videoId)}>
                         <div className="w-8 h-6 rounded overflow-hidden bg-bg-elev shrink-0">
-                          {v.thumbnailUrl ? <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" /> : <Play className="h-3 w-3 m-auto text-fg-dim" />}
+                          <SafeThumbnail
+                            src={v.thumbnailUrl}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            iconSize={12}
+                          />
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-fg truncate">{v.title}</p>
