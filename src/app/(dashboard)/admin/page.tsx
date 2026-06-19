@@ -150,7 +150,7 @@ export default function AdminDashboard() {
                   <th className="text-left px-3 py-3 font-medium">Role</th>
                   <th className="text-left px-3 py-3 font-medium">Cohort</th>
                   <th className="text-left px-3 py-3 font-medium">Subject</th>
-                  <th className="px-3 py-3" />
+                  <th className="px-5 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,10 +167,11 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-3 py-2.5 text-fg-muted text-xs">{u.cohort ?? "—"}</td>
                       <td className="px-3 py-2.5 text-fg-muted text-xs">{u.teachingSubject ?? "—"}</td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-5 py-2.5 text-right">
                         <button
                           onClick={() => { if (confirm(`Delete ${u.name}?`)) deleteMut.mutate(u.userId); }}
-                          className="opacity-0 group-hover:opacity-100 text-fg-dim hover:text-rose-500 transition-all"
+                          className="text-fg-dim hover:text-rose-500 transition-all p-1.5 hover:bg-rose-500/10 rounded-lg cursor-pointer inline-flex items-center justify-center"
+                          title="Delete User"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
