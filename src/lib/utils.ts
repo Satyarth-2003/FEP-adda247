@@ -54,8 +54,10 @@ export function youtubeThumb(url: string | null | undefined): string | null {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
 }
 
-export function formatDate(iso: string): string {
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso || iso === "undefined" || iso === "null") return "—";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
@@ -63,14 +65,17 @@ export function formatDate(iso: string): string {
   });
 }
 
-export function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+export function relativeTime(iso: string | null | undefined): string {
+  if (!iso || iso === "undefined" || iso === "null") return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const diff = Date.now() - d.getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return "just now";
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d ago`;
+  const dy = Math.floor(h / 24);
+  if (dy < 7) return `${dy}d ago`;
   return formatDate(iso);
 }

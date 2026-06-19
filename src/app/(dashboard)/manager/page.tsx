@@ -12,7 +12,7 @@ import { SubjectRadar, buildRadarData } from "@/components/SubjectRadar";
 import { ScoreRing } from "@/components/ScoreRing";
 import { ProgramAnalytics } from "@/components/ProgramAnalytics";
 import { VideoUploader } from "@/components/VideoUploader";
-import { cn, extractYouTubeId } from "@/lib/utils";
+import { cn, extractYouTubeId, formatDate } from "@/lib/utils";
 import type { Subject, Video, GradiAnalysis, JWTPayload } from "@/types";
 
 interface AggregateStats {
@@ -579,7 +579,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
               {/* Title */}
               <div className="min-w-0 cursor-pointer" onClick={() => toggleExpand(v.videoId)}>
                 <p className="text-sm font-medium text-fg truncate">{v.title}</p>
-                <p className="text-[10px] text-fg-muted mt-0.5">{v.subject} · {new Date(v.uploadedAt).toLocaleDateString()}</p>
+                <p className="text-[10px] text-fg-muted mt-0.5">{v.subject} · {formatDate(v.uploadedAt)}</p>
               </div>
 
               {/* Gradi score /25 */}
@@ -905,7 +905,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
               {/* Title + date */}
               <div className="min-w-0">
                 <p className="text-sm font-medium text-fg truncate">{v.title}</p>
-                <p className="text-[10px] text-fg-muted">{new Date(v.uploadedAt).toLocaleDateString()}</p>
+                <p className="text-[10px] text-fg-muted">{formatDate(v.uploadedAt)}</p>
               </div>
               {/* Faculty */}
               <span className="text-[11px] text-fg-muted truncate">{v.facultyName ?? "—"}</span>
