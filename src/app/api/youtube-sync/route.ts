@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ScanCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { ScanCommand, PutCommand, UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { extractYouTubeId } from "@/lib/utils";
 import type { Video } from "@/types";
@@ -111,8 +111,16 @@ async function runSync() {
     }
     console.log(`[YT Sync] Got stats for ${statsMap.size}/${ytIds.length} videos`);
 
+    // Load existing cached stats to prevent overwriting with 0/empty
+    const existingCachesRes = await ddb.send(new ScanCommand({ TableName: TABLES.YT_STATS }));
+    const existingCaches = existingCachesRes.Items ?? [];
+    const cacheMap = new Map<string, any>(existingCaches.map(c => [c.facultyId, c]));
+
     // 4. Channel subscriber counts (batch size 50)
-    const channelIds = [...new Set([...statsMap.values()].map(s => s.channelId).filter(Boolean))];
+    const channelIdsFromStats = [...new Set([...statsMap.values()].map(s => s.channelId).filter(Boolean))];
+    const channelIdsFromCache = [...new Set(existingCaches.map(c => c.channelId).filter(Boolean))];
+    const channelIds = [...new Set([...channelIdsFromStats, ...channelIdsFromCache])];
+
     const channelSubsMap = new Map<string, number>();
     for (let i = 0; i < channelIds.length; i += BATCH_SIZE) {
       const batch = channelIds.slice(i, i + BATCH_SIZE);
@@ -138,12 +146,18 @@ async function runSync() {
       let totalViews = 0;
       let totalLikes = 0;
       let channelId = "";
+      const existing = cacheMap.get(facultyId);
 
       for (const v of fVideos) {
         const ytId = extractYouTubeId(v.youtubeUrl);
         if (!ytId) continue;
         const s = statsMap.get(ytId);
-        if (!s) continue;
+        if (!s) {
+          // Fall back to stats already stored on the video item in the DB
+          totalViews += v.views ?? 0;
+          totalLikes += v.likes ?? 0;
+          continue;
+        }
 
         totalViews += s.views;
         totalLikes += s.likes;
@@ -162,7 +176,21 @@ async function runSync() {
         }
       }
 
-      const subscribers = channelId ? (channelSubsMap.get(channelId) ?? 0) : 0;
+      if (!channelId && existing?.channelId) {
+        channelId = existing.channelId;
+      }
+
+      let subscribers = channelId ? (channelSubsMap.get(channelId) ?? 0) : 0;
+      if (subscribers === 0 && existing?.subscribers) {
+        subscribers = existing.subscribers;
+      }
+
+      if (totalViews === 0 && existing?.totalViews) {
+        totalViews = existing.totalViews;
+      }
+      if (totalLikes === 0 && existing?.totalLikes) {
+        totalLikes = existing.totalLikes;
+      }
 
       await ddb.send(new PutCommand({
         TableName: TABLES.YT_STATS,

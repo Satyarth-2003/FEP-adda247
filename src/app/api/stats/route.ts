@@ -99,7 +99,13 @@ async function triggerBackgroundFacultyYTSync(facultyId: string, videos: Video[]
         });
       }
 
+      const currentCache = await getCachedYTStats(facultyId);
+
       const channelIds = [...new Set([...statsMap.values()].map(s => s.channelId).filter(Boolean))];
+      if (channelIds.length === 0 && currentCache?.channelId) {
+        channelIds.push(currentCache.channelId);
+      }
+
       const channelSubsMap = new Map<string, number>();
       for (let i = 0; i < channelIds.length; i += BATCH_SIZE) {
         const batch = channelIds.slice(i, i + BATCH_SIZE);
@@ -139,7 +145,9 @@ async function triggerBackgroundFacultyYTSync(facultyId: string, videos: Video[]
         }
       }
 
-      const currentCache = await getCachedYTStats(facultyId);
+      if (!channelId && currentCache?.channelId) {
+        channelId = currentCache.channelId;
+      }
       
       let subscribers = channelId ? (channelSubsMap.get(channelId) ?? 0) : 0;
       if (subscribers === 0 && currentCache?.subscribers) {
@@ -387,7 +395,7 @@ export async function GET(req: Request) {
   }
 
   const isStale = !ytCache || !ytCache.syncedAt || 
-    (new Date().getTime() - new Date(ytCache.syncedAt).getTime() > 1000 * 60 * 60);
+    (new Date().getTime() - new Date(ytCache.syncedAt).getTime() > 1000 * 60 * 60 * 4);
 
   if (isStale && videos.length > 0) {
     triggerBackgroundFacultyYTSync(facultyId, videos);
@@ -483,7 +491,7 @@ export async function GET(req: Request) {
     // ── YouTube aggregate stats (from hourly cache) ──
     totalViews: ytCache?.totalViews ?? 0,
     totalLikes: ytCache?.totalLikes ?? 0,
-    subscribers: ytCache?.subscribers || (facultyUser?.cohort === "March EduSkill" ? (Math.floor((installs || 0) * 0.4) + Math.floor((ytCache?.totalViews ?? 0) * 0.02)) : 0),
+    subscribers: ytCache?.subscribers || 0,
     ytStatsSyncedAt: ytCache?.syncedAt ?? null,
     bySubject,
     videos: videos.map((v) => {
@@ -684,7 +692,7 @@ async function aggregateAll(
         installs: adjust.installs,
         views: yt?.totalViews ?? 0,
         likes: yt?.totalLikes ?? 0,
-        subscribersGained: yt?.subscribers || (Math.floor(adjust.installs * 0.4) + Math.floor((yt?.totalViews ?? 0) * 0.02)),
+        subscribersGained: yt?.subscribers || 0,
         avatarUrl: u.avatarUrl,
         avgGradiScore: 0,
         ytStatsSyncedAt: yt?.syncedAt ?? null,
