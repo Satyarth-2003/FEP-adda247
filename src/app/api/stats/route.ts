@@ -24,6 +24,27 @@ function parseYTDuration(dur: string): string {
   return h ? `${h}${m.padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
+function getWeekRange(week: string): { start: Date; end: Date } {
+  const now = new Date();
+  const currentStart = new Date(now);
+  const day = currentStart.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  currentStart.setDate(currentStart.getDate() + diffToMonday);
+  currentStart.setHours(0, 0, 0, 0);
+
+  const currentEnd = new Date(currentStart);
+  currentEnd.setDate(currentEnd.getDate() + 7);
+
+  if (week === "previous") {
+    const previousStart = new Date(currentStart);
+    previousStart.setDate(previousStart.getDate() - 7);
+    const previousEnd = new Date(currentStart);
+    return { start: previousStart, end: previousEnd };
+  }
+
+  return { start: currentStart, end: now };
+}
+
 interface VideoStat {
   id: string;
   views: number;
@@ -314,10 +335,13 @@ export async function GET(req: Request) {
   );
   const facultyUser = facultyUserRes.Item as User | undefined;
 
+  const week = searchParams.get("week") ?? "all";
+
   if (searchParams.get("scope") === "all") {
     return aggregateAll(
       searchParams.get("cohort") ?? "June EduSkill",
-      user
+      user,
+      week
     );
   }
 
@@ -329,10 +353,24 @@ export async function GET(req: Request) {
     })
   );
   const videos = (videosRes.Items ?? []) as Video[];
+  
+  let filteredVideos = videos;
+  if (week === "current" || week === "previous") {
+    const { start, end } = getWeekRange(week);
+    filteredVideos = videos.filter((v) => {
+      if (!v.uploadedAt) return false;
+      const d = new Date(v.uploadedAt);
+      return d >= start && d < end;
+    });
+  }
+
   processPendingQueue();
   triggerSelfHealing(videos);
 
-  if (videos.length === 0) {
+  // ── Read cached YouTube stats (synced hourly by /api/youtube-sync) ──
+  const ytCache = await getCachedYTStats(facultyId);
+
+  if (filteredVideos.length === 0) {
     return NextResponse.json({
       facultyId,
       facultyName: facultyUser?.name || "Unknown Faculty",
@@ -350,23 +388,29 @@ export async function GET(req: Request) {
       pctRatedByManager: 0,
       totalViews: 0,
       totalLikes: 0,
-      subscribers: 0,
-      ytStatsSyncedAt: null,
+      subscribers: ytCache?.subscribers || 0,
+      ytStatsSyncedAt: ytCache?.syncedAt ?? null,
       bySubject: {},
       videos: [],
     });
   }
 
-  // ── Read cached YouTube stats (synced hourly by /api/youtube-sync) ──
-  const ytCache = await getCachedYTStats(facultyId);
-
   let installs = 0;
   if (facultyUser?.cohort === "March EduSkill" && facultyUser.adjustToken) {
     try {
       const end = new Date();
-      const start = new Date();
+      let start = new Date();
       start.setDate(start.getDate() - 30);
-      const datePeriod = `${start.toISOString().split("T")[0]}:${end.toISOString().split("T")[0]}`;
+      let datePeriod = "";
+
+      if (week === "current" || week === "previous") {
+        const range = getWeekRange(week);
+        start = range.start;
+        datePeriod = `${start.toISOString().split("T")[0]}:${range.end.toISOString().split("T")[0]}`;
+      } else {
+        datePeriod = `${start.toISOString().split("T")[0]}:${end.toISOString().split("T")[0]}`;
+      }
+
       const params = new URLSearchParams({
         dimensions: "network",
         metrics: "installs,clicks,sessions",
@@ -402,7 +446,7 @@ export async function GET(req: Request) {
   }
 
   // ── Gradi analyses ──────────────────────────────────────────────
-  const keys = videos.map((v) => ({ videoId: v.videoId }));
+  const keys = filteredVideos.map((v) => ({ videoId: v.videoId }));
   const analysisChunks: GradiAnalysis[] = [];
   for (let i = 0; i < keys.length; i += 100) {
     const chunk = keys.slice(i, i + 100);
@@ -420,7 +464,7 @@ export async function GET(req: Request) {
 
   // ── Fetch manager ratings for these videos ──────────────────────
   const ratings: ManagerRating[] = [];
-  const videoIds = videos.map((v) => v.videoId);
+  const videoIds = filteredVideos.map((v) => v.videoId);
   if (videoIds.length > 0) {
     const ratingPromises = videoIds.map((vId) =>
       ddb.send(
@@ -446,7 +490,7 @@ export async function GET(req: Request) {
     if (!ratingMap.has(r.videoId)) ratingMap.set(r.videoId, []);
     ratingMap.get(r.videoId)!.push(r);
   }
-  const ratedCount = videos.filter((v) => v.status === "manager_rated").length;
+  const ratedCount = filteredVideos.filter((v) => v.status === "manager_rated").length;
   const scores = analysisChunks
     .map((a) => a.gradiScore)
     .filter((n) => n > 0);
@@ -457,7 +501,7 @@ export async function GET(req: Request) {
     string,
     { count: number; avgScore: number; videos: Video[] }
   > = {};
-  for (const v of videos) {
+  for (const v of filteredVideos) {
     const sid = v.subjectId || "unknown";
     if (!bySubject[sid]) bySubject[sid] = { count: 0, avgScore: 0, videos: [] };
     bySubject[sid].count++;
@@ -482,19 +526,19 @@ export async function GET(req: Request) {
     examTarget: facultyUser?.examTarget,
     subjects: facultyUser?.subjects || [],
     avatarUrl: facultyUser?.avatarUrl,
-    totalVideos: videos.length,
+    totalVideos: filteredVideos.length,
     avgGradiScore: Number(avg.toFixed(2)),
     pctRatedByManager:
-      videos.length > 0
-        ? Math.round((ratedCount / videos.length) * 100)
+      filteredVideos.length > 0
+        ? Math.round((ratedCount / filteredVideos.length) * 100)
         : 0,
     // ── YouTube aggregate stats (from hourly cache) ──
-    totalViews: ytCache?.totalViews ?? 0,
-    totalLikes: ytCache?.totalLikes ?? 0,
+    totalViews: week === "all" ? (ytCache?.totalViews ?? 0) : filteredVideos.reduce((sum, v) => sum + (v.views ?? 0), 0),
+    totalLikes: week === "all" ? (ytCache?.totalLikes ?? 0) : filteredVideos.reduce((sum, v) => sum + (v.likes ?? 0), 0),
     subscribers: ytCache?.subscribers || 0,
     ytStatsSyncedAt: ytCache?.syncedAt ?? null,
     bySubject,
-    videos: videos.map((v) => {
+    videos: filteredVideos.map((v) => {
       const vRatings = ratingMap.get(v.videoId) || [];
       const own = vRatings.find((r) => r.managerId === "shared") || vRatings[0];
       return {
@@ -509,7 +553,8 @@ export async function GET(req: Request) {
 // ── aggregateAll — leaderboard / manager view ─────────────────────
 async function aggregateAll(
   cohort: string = "June EduSkill",
-  loggedInUser?: JWTPayload
+  loggedInUser?: JWTPayload,
+  week: string = "all"
 ) {
   // 1. Scan USERS to find faculty in the cohort (Scan is necessary as we have no index on cohort)
   const usersRes = await ddb.send(
@@ -539,7 +584,18 @@ async function aggregateAll(
   );
   const videoResults = await Promise.all(videoPromises);
   const videos = videoResults.flatMap((r) => r.Items ?? []) as Video[];
-  const videoIds = videos.map((v) => v.videoId);
+
+  let filteredVideos = videos;
+  if (week === "current" || week === "previous") {
+    const { start, end } = getWeekRange(week);
+    filteredVideos = videos.filter((v) => {
+      if (!v.uploadedAt) return false;
+      const d = new Date(v.uploadedAt);
+      return d >= start && d < end;
+    });
+  }
+
+  const videoIds = filteredVideos.map((v) => v.videoId);
 
   // 3. BatchGet analyses for only the cohort's videos
   const analyses: GradiAnalysis[] = [];
@@ -631,9 +687,18 @@ async function aggregateAll(
     if (tokens.length > 0 && process.env.ADJUST_API_TOKEN) {
       try {
         const end = new Date();
-        const start = new Date();
+        let start = new Date();
         start.setDate(start.getDate() - 30);
-        const datePeriod = `${start.toISOString().split("T")[0]}:${end.toISOString().split("T")[0]}`;
+        let datePeriod = "";
+
+        if (week === "current" || week === "previous") {
+          const range = getWeekRange(week);
+          start = range.start;
+          datePeriod = `${start.toISOString().split("T")[0]}:${range.end.toISOString().split("T")[0]}`;
+        } else {
+          datePeriod = `${start.toISOString().split("T")[0]}:${end.toISOString().split("T")[0]}`;
+        }
+
         const params = new URLSearchParams({
           dimensions: "network",
           metrics: "installs,clicks,sessions",
@@ -674,7 +739,7 @@ async function aggregateAll(
     }
 
     leaderboard = users.map((u) => {
-      const own = videos.filter((v) => v.facultyId === u.userId);
+      const own = filteredVideos.filter((v) => v.facultyId === u.userId);
       const emailClean = u.email.toLowerCase().trim();
       const adjust = adjustMap.get(emailClean) ?? {
         installs: 0,
@@ -690,8 +755,8 @@ async function aggregateAll(
         subjects: u.subjects,
         videoCount: own.length,
         installs: adjust.installs,
-        views: yt?.totalViews ?? 0,
-        likes: yt?.totalLikes ?? 0,
+        views: week === "all" ? (yt?.totalViews ?? 0) : own.reduce((sum, v) => sum + (v.views ?? 0), 0),
+        likes: week === "all" ? (yt?.totalLikes ?? 0) : own.reduce((sum, v) => sum + (v.likes ?? 0), 0),
         subscribersGained: yt?.subscribers || 0,
         avatarUrl: u.avatarUrl,
         avgGradiScore: 0,
@@ -703,7 +768,7 @@ async function aggregateAll(
     );
   } else {
     leaderboard = users.map((u) => {
-      const own = videos.filter((v) => v.facultyId === u.userId);
+      const own = filteredVideos.filter((v) => v.facultyId === u.userId);
       const scores = own
         .map((v) => aMap.get(v.videoId)?.gradiScore || 0)
         .filter((n) => n > 0);
@@ -735,8 +800,8 @@ async function aggregateAll(
         videoCount: own.length,
         avgGradiScore: Number(avg.toFixed(2)),
         avgCombinedScore: Number(avgCombined.toFixed(2)),
-        totalViews: yt?.totalViews ?? 0,
-        totalLikes: yt?.totalLikes ?? 0,
+        totalViews: week === "all" ? (yt?.totalViews ?? 0) : own.reduce((sum, v) => sum + (v.views ?? 0), 0),
+        totalLikes: week === "all" ? (yt?.totalLikes ?? 0) : own.reduce((sum, v) => sum + (v.likes ?? 0), 0),
         subscribers: yt?.subscribers ?? 0,
         ytStatsSyncedAt: yt?.syncedAt ?? null,
         avatarUrl: u.avatarUrl,
@@ -760,7 +825,7 @@ async function aggregateAll(
     "ratingInteraction",
     "ratingCommercial",
   ] as const;
-  for (const v of videos) {
+  for (const v of filteredVideos) {
     const a = aMap.get(v.videoId);
     if (!a) continue;
     const sid = v.subjectId || "unknown";
@@ -776,7 +841,7 @@ async function aggregateAll(
   return NextResponse.json({
     leaderboard,
     totalFaculty: users.length,
-    totalVideos: videos.length,
+    totalVideos: filteredVideos.length,
     totalAnalyses: analyses.length,
     totalRatings: ratings.length,
     subjectAgg,

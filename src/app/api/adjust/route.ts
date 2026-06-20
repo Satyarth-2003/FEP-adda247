@@ -16,11 +16,35 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No tracker tokens provided" }, { status: 400 });
   }
 
+  const week = searchParams.get("week") ?? "all";
+
   try {
     const end = new Date();
-    const start = new Date();
+    let start = new Date();
     start.setDate(start.getDate() - 30);
-    const datePeriod = `${start.toISOString().split("T")[0]}:${end.toISOString().split("T")[0]}`;
+    let datePeriod = "";
+
+    if (week === "current" || week === "previous") {
+      const now = new Date();
+      const currentStart = new Date(now);
+      const day = currentStart.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      currentStart.setDate(currentStart.getDate() + diffToMonday);
+      currentStart.setHours(0, 0, 0, 0);
+
+      if (week === "previous") {
+        const previousStart = new Date(currentStart);
+        previousStart.setDate(previousStart.getDate() - 7);
+        const previousEnd = new Date(currentStart);
+        start = previousStart;
+        datePeriod = `${start.toISOString().split("T")[0]}:${previousEnd.toISOString().split("T")[0]}`;
+      } else {
+        start = currentStart;
+        datePeriod = `${start.toISOString().split("T")[0]}:${now.toISOString().split("T")[0]}`;
+      }
+    } else {
+      datePeriod = `${start.toISOString().split("T")[0]}:${end.toISOString().split("T")[0]}`;
+    }
 
     const params = new URLSearchParams({
       dimensions: "network",

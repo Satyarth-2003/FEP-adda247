@@ -46,6 +46,8 @@ export default function ManagerDashboard() {
   const urlFacultyId = searchParams ? searchParams.get("facultyId") : null;
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
+  const [videoCountFilter, setVideoCountFilter] = useState<string>("all");
+  const [weekFilter, setWeekFilter] = useState<string>("all");
   const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null);
   
   useEffect(() => {
@@ -114,17 +116,17 @@ export default function ManagerDashboard() {
   });
 
   const aggQ = useQuery({
-    queryKey: ["aggregate", activeCohort],
+    queryKey: ["aggregate", activeCohort, weekFilter],
     queryFn: async (): Promise<AggregateStats> =>
-      (await fetch(`/api/stats?scope=all&cohort=${encodeURIComponent(activeCohort)}`)).json(),
+      (await fetch(`/api/stats?scope=all&cohort=${encodeURIComponent(activeCohort)}&week=${weekFilter}`)).json(),
     refetchInterval: 8000,
   });
 
   const facultyQ = useQuery({
-    queryKey: ["faculty-detail", selectedFaculty],
+    queryKey: ["faculty-detail", selectedFaculty, weekFilter],
     queryFn: async (): Promise<FacultyStats> =>
       (
-        await fetch(`/api/stats?facultyId=${selectedFaculty}`)
+        await fetch(`/api/stats?facultyId=${selectedFaculty}&week=${weekFilter}`)
       ).json(),
     enabled: !!selectedFaculty,
   });
@@ -144,9 +146,21 @@ export default function ManagerDashboard() {
         : true;
       const matchSubject =
         subjectFilter === "all" || r.subjects.includes(subjectFilter);
-      return matchSearch && matchSubject;
+
+      let matchVideoCount = true;
+      if (videoCountFilter === "0") {
+        matchVideoCount = r.videoCount === 0;
+      } else if (videoCountFilter === "1+") {
+        matchVideoCount = r.videoCount >= 1;
+      } else if (videoCountFilter === "3+") {
+        matchVideoCount = r.videoCount >= 3;
+      } else if (videoCountFilter === "5+") {
+        matchVideoCount = r.videoCount >= 5;
+      }
+
+      return matchSearch && matchSubject && matchVideoCount;
     });
-  }, [aggQ.data, search, subjectFilter]);
+  }, [aggQ.data, search, subjectFilter, videoCountFilter]);
 
   const filteredVideos = useMemo(() => {
     const list = facultyQ.data?.videos ?? [];
@@ -316,8 +330,8 @@ export default function ManagerDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 flex-1 min-h-0 overflow-hidden">
         {/* Left: leaderboard */}
         <div className="flex flex-col h-full overflow-hidden">
-          <div className="mb-3 flex items-center gap-2 shrink-0">
-            <div className="relative flex-1">
+          <div className="mb-3 flex flex-col gap-2 shrink-0">
+            <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-fg-muted" />
               <input
                 value={search}
@@ -326,18 +340,42 @@ export default function ManagerDashboard() {
                 className="w-full rounded-full border border-border bg-bg-elev/60 pl-9 pr-3 py-2 text-sm outline-none focus:border-fg/30"
               />
             </div>
-            <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              className="rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none focus:border-fg/30"
-            >
-              <option value="all">All subjects</option>
-              {subjects.map((s) => (
-                <option key={s.subjectId} value={s.subjectId}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex gap-2 w-full">
+              <select
+                value={subjectFilter}
+                onChange={(e) => setSubjectFilter(e.target.value)}
+                className="flex-1 rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none focus:border-fg/30 min-w-0"
+              >
+                <option value="all">All subjects</option>
+                {subjects.map((s) => (
+                  <option key={s.subjectId} value={s.subjectId}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={videoCountFilter}
+                onChange={(e) => setVideoCountFilter(e.target.value)}
+                className="flex-1 rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none focus:border-fg/30 min-w-0"
+              >
+                <option value="all">All uploads</option>
+                <option value="0">0 videos</option>
+                <option value="1+">1+ videos</option>
+                <option value="3+">3+ videos</option>
+                <option value="5+">5+ videos</option>
+              </select>
+
+              <select
+                value={weekFilter}
+                onChange={(e) => setWeekFilter(e.target.value)}
+                className="flex-1 rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none focus:border-fg/30 min-w-0"
+              >
+                <option value="all">All Time</option>
+                <option value="current">Current Week</option>
+                <option value="previous">Previous Week</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2 no-scrollbar">
@@ -1034,6 +1072,8 @@ function MarchEduSkillDashboard() {
   const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
+  const [videoCountFilter, setVideoCountFilter] = useState("all");
+  const [weekFilter, setWeekFilter] = useState("all");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   
   // Profile edit fields
@@ -1048,9 +1088,9 @@ function MarchEduSkillDashboard() {
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
 
   const aggQ = useQuery({
-    queryKey: ["aggregate", "March EduSkill"],
+    queryKey: ["aggregate", "March EduSkill", weekFilter],
     queryFn: async (): Promise<any> =>
-      (await fetch(`/api/stats?scope=all&cohort=${encodeURIComponent("March EduSkill")}`)).json(),
+      (await fetch(`/api/stats?scope=all&cohort=${encodeURIComponent("March EduSkill")}&week=${weekFilter}`)).json(),
     refetchInterval: 8000,
   });
 
@@ -1077,12 +1117,17 @@ function MarchEduSkillDashboard() {
   });
 
   const adjustQ = useQuery({
-    queryKey: ["adjust-stats"],
+    queryKey: ["adjust-stats", weekFilter],
     queryFn: async () => {
       const faculty = cohortQ.data?.faculty ?? [];
       const tokens = faculty.filter(f => f.adjustToken).map(f => f.adjustToken!);
       if (tokens.length === 0) return { networks: [], totals: { installs: 0, clicks: 0, sessions: 0, reattributions: 0 } };
-      const res = await fetch(`/api/adjust?trackers=${tokens.join(",")}`);
+      
+      const params = new URLSearchParams({ trackers: tokens.join(",") });
+      if (weekFilter !== "all") {
+        params.set("week", weekFilter);
+      }
+      const res = await fetch(`/api/adjust?${params.toString()}`);
       return res.json() as Promise<any>;
     },
     enabled: !!cohortQ.data?.faculty?.length,
@@ -1133,9 +1178,9 @@ function MarchEduSkillDashboard() {
 
   // Fetch videos for the selected faculty
   const videosQ = useQuery({
-    queryKey: ["march-faculty-videos", selectedFaculty],
+    queryKey: ["march-faculty-videos", selectedFaculty, weekFilter],
     queryFn: async () => {
-      const res = await fetch(`/api/videos?facultyId=${selectedFaculty}`);
+      const res = await fetch(`/api/videos?facultyId=${selectedFaculty}&week=${weekFilter}`);
       return res.json() as Promise<{ videos: Video[] }>;
     },
     enabled: !!selectedFaculty,
@@ -1148,9 +1193,21 @@ function MarchEduSkillDashboard() {
     return list.filter((r: any) => {
       const matchSearch = search ? r.name.toLowerCase().includes(search.toLowerCase()) || r.email.toLowerCase().includes(search.toLowerCase()) : true;
       const matchSub = subjectFilter === "all" || (r.subjects || []).includes(subjectFilter);
-      return matchSearch && matchSub;
+      
+      let matchVideoCount = true;
+      if (videoCountFilter === "0") {
+        matchVideoCount = r.videoCount === 0;
+      } else if (videoCountFilter === "1+") {
+        matchVideoCount = r.videoCount >= 1;
+      } else if (videoCountFilter === "3+") {
+        matchVideoCount = r.videoCount >= 3;
+      } else if (videoCountFilter === "5+") {
+        matchVideoCount = r.videoCount >= 5;
+      }
+
+      return matchSearch && matchSub && matchVideoCount;
     }).sort((a: any, b: any) => b.installs - a.installs);
-  }, [aggQ.data, search, subjectFilter]);
+  }, [aggQ.data, search, subjectFilter, videoCountFilter]);
 
   async function handleSaveProfile() {
     setSavingProfile(true);
@@ -1227,8 +1284,8 @@ function MarchEduSkillDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[440px_1fr] gap-6 flex-1 min-h-0 overflow-hidden">
         {/* LEFT: Leaderboard */}
         <div className="flex flex-col h-full overflow-hidden">
-          <div className="mb-3 flex items-center gap-2 shrink-0">
-            <div className="relative flex-1">
+          <div className="mb-3 flex flex-col gap-2 shrink-0">
+            <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-fg-muted" />
               <input
                 value={search}
@@ -1237,16 +1294,40 @@ function MarchEduSkillDashboard() {
                 className="w-full rounded-full border border-border bg-bg-elev/60 pl-9 pr-3 py-2 text-sm outline-none focus:border-fg/30"
               />
             </div>
-            <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              className="rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none focus:border-fg/30"
-            >
-              <option value="all">All verticals</option>
-              {subjects.map((s) => (
-                <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-              ))}
-            </select>
+            <div className="flex gap-2 w-full">
+              <select
+                value={subjectFilter}
+                onChange={(e) => setSubjectFilter(e.target.value)}
+                className="flex-1 rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none focus:border-fg/30 min-w-0"
+              >
+                <option value="all">All verticals</option>
+                {subjects.map((s) => (
+                  <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
+                ))}
+              </select>
+
+              <select
+                value={videoCountFilter}
+                onChange={(e) => setVideoCountFilter(e.target.value)}
+                className="flex-1 rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none focus:border-fg/30 min-w-0"
+              >
+                <option value="all">All uploads</option>
+                <option value="0">0 videos</option>
+                <option value="1+">1+ videos</option>
+                <option value="3+">3+ videos</option>
+                <option value="5+">5+ videos</option>
+              </select>
+
+              <select
+                value={weekFilter}
+                onChange={(e) => setWeekFilter(e.target.value)}
+                className="flex-1 rounded-full border border-border bg-bg-elev/60 px-3 py-2 text-xs outline-none focus:border-fg/30 min-w-0"
+              >
+                <option value="all">All Time</option>
+                <option value="current">Current Week</option>
+                <option value="previous">Previous Week</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2 no-scrollbar">
