@@ -322,18 +322,40 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const facultyId = searchParams.get("facultyId") ?? user.userId;
+  let facultyId = searchParams.get("facultyId") ?? user.userId;
 
   // Faculty: own stats only. Manager/Admin: any.
   if (user.role === "eduskill_faculty" && facultyId !== user.userId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
-  // Fetch target faculty user details
+  // ── Stale userId guard: if the userId from JWT no longer exists in DB,
+  // fall back to looking up the user by email. This handles the case where
+  // a duplicate account was merged and the old userId was deleted.
+  let facultyUser: User | undefined;
   const facultyUserRes = await ddb.send(
     new GetCommand({ TableName: TABLES.USERS, Key: { userId: facultyId } })
   );
-  const facultyUser = facultyUserRes.Item as User | undefined;
+
+  if (!facultyUserRes.Item && user.role === "eduskill_faculty") {
+    // Try email-based lookup
+    const { QueryCommand: QC } = await import("@aws-sdk/lib-dynamodb");
+    const emailRes = await ddb.send(new QC({
+      TableName: TABLES.USERS,
+      IndexName: "email-index",
+      KeyConditionExpression: "email = :e",
+      ExpressionAttributeValues: { ":e": user.email.toLowerCase().trim() },
+      Limit: 1,
+    }));
+    const freshUser = emailRes.Items?.[0] as User | undefined;
+    if (freshUser) {
+      facultyId = freshUser.userId;
+      facultyUser = freshUser;
+      console.log(`[/api/stats] Resolved stale userId for ${user.email}: ${user.userId} → ${freshUser.userId}`);
+    }
+  } else {
+    facultyUser = facultyUserRes.Item as User | undefined;
+  }
 
   const week = searchParams.get("week") ?? "all";
 
@@ -353,6 +375,7 @@ export async function GET(req: Request) {
     })
   );
   const videos = (videosRes.Items ?? []) as Video[];
+
   
   let filteredVideos = videos;
   if (week === "current" || week === "previous") {
