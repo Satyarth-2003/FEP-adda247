@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Search, Shield, Users, UserCheck, Loader2, Check, X } from "lucide-react";
+import { Plus, Trash2, Search, Shield, Users, UserCheck, Loader2, Check, X, Edit2 } from "lucide-react";
 import type { User, Role } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,42 @@ export default function AdminDashboard() {
       fetch("/api/admin/users", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) }).then(r => r.json()),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
+
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: "", teachingSubject: "", cohort: "", subjects: "" });
+
+  const updateMut = useMutation({
+    mutationFn: (data: { userId: string; name: string; subjects: string[]; teachingSubject?: string; cohort?: string }) =>
+      fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      }).then(r => r.json()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      setEditingUserId(null);
+    }
+  });
+
+  function startEdit(u: User) {
+    setEditingUserId(u.userId);
+    setEditDraft({
+      name: u.name || "",
+      teachingSubject: u.teachingSubject || "",
+      cohort: u.cohort || "",
+      subjects: u.subjects ? u.subjects.join(", ") : "",
+    });
+  }
+
+  function saveEdit(userId: string) {
+    updateMut.mutate({
+      userId,
+      name: editDraft.name,
+      teachingSubject: editDraft.teachingSubject || undefined,
+      cohort: editDraft.cohort || undefined,
+      subjects: editDraft.subjects ? editDraft.subjects.split(",").map(s => s.trim()).filter(Boolean) : [],
+    });
+  }
 
   const users = usersQ.data?.users ?? [];
   const filtered = users.filter(u => {
@@ -156,25 +192,109 @@ export default function AdminDashboard() {
               <tbody>
                 {filtered.map(u => {
                   const r = ROLE_LABELS[u.role] ?? ROLE_LABELS.eduskill_faculty;
+                  const isEditing = editingUserId === u.userId;
                   return (
                     <tr key={u.userId} className="group border-b border-border/60 last:border-0 hover:bg-bg-elev/40 transition-colors">
-                      <td className="px-5 py-2.5 font-medium text-fg/90 whitespace-nowrap">{u.name}</td>
+                      <td className="px-5 py-2.5 font-medium text-fg/90 whitespace-nowrap">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editDraft.name}
+                            onChange={e => setEditDraft(d => ({ ...d, name: e.target.value }))}
+                            className="rounded border border-border bg-bg px-2 py-1 text-xs w-full max-w-[150px] outline-none focus:border-fg/30"
+                          />
+                        ) : (
+                          u.name
+                        )}
+                      </td>
                       <td className="px-3 py-2.5 text-fg-muted text-xs">{u.email}</td>
                       <td className="px-3 py-2.5">
                         <span className={cn("rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider font-medium", r.color)}>
                           {r.label}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-fg-muted text-xs">{u.cohort ?? "—"}</td>
-                      <td className="px-3 py-2.5 text-fg-muted text-xs">{u.teachingSubject ?? "—"}</td>
-                      <td className="px-5 py-2.5 text-right">
-                        <button
-                          onClick={() => { if (confirm(`Delete ${u.name}?`)) deleteMut.mutate(u.userId); }}
-                          className="text-fg-dim hover:text-rose-500 transition-all p-1.5 hover:bg-rose-500/10 rounded-lg cursor-pointer inline-flex items-center justify-center"
-                          title="Delete User"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                      <td className="px-3 py-2.5 text-fg-muted text-xs">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editDraft.cohort}
+                            onChange={e => setEditDraft(d => ({ ...d, cohort: e.target.value }))}
+                            className="rounded border border-border bg-bg px-2 py-1 text-xs w-full max-w-[120px] outline-none focus:border-fg/30"
+                          />
+                        ) : (
+                          u.cohort ?? "—"
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-fg-muted text-xs">
+                        {isEditing ? (
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              value={editDraft.teachingSubject}
+                              onChange={e => setEditDraft(d => ({ ...d, teachingSubject: e.target.value }))}
+                              placeholder="Teaching Subject"
+                              className="rounded border border-border bg-bg px-2 py-1 text-[11px] w-full max-w-[150px] outline-none focus:border-fg/30"
+                            />
+                            <input
+                              type="text"
+                              value={editDraft.subjects}
+                              onChange={e => setEditDraft(d => ({ ...d, subjects: e.target.value }))}
+                              placeholder="Verticals (e.g. ssc, neet)"
+                              className="rounded border border-border bg-bg px-2 py-1 text-[10px] w-full max-w-[150px] outline-none focus:border-fg/30"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <div>{u.teachingSubject || "—"}</div>
+                            {u.subjects && u.subjects.length > 0 && (
+                              <div className="text-[10px] text-fg-dim mt-0.5">
+                                Verticals: {u.subjects.join(", ")}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </td>
+                      <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                        {isEditing ? (
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={() => saveEdit(u.userId)}
+                              disabled={updateMut.isPending}
+                              className="text-emerald-500 hover:bg-emerald-500/10 p-1.5 rounded-lg cursor-pointer inline-flex items-center justify-center border-none bg-transparent"
+                              title="Save Changes"
+                            >
+                              {updateMut.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => setEditingUserId(null)}
+                              className="text-fg-dim hover:text-rose-500 p-1.5 rounded-lg cursor-pointer inline-flex items-center justify-center border-none bg-transparent"
+                              title="Cancel"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={() => startEdit(u)}
+                              className="text-fg-dim hover:text-emerald-500 p-1.5 hover:bg-emerald-500/10 rounded-lg cursor-pointer inline-flex items-center justify-center border-none bg-transparent"
+                              title="Edit User"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => { if (confirm(`Delete ${u.name}?`)) deleteMut.mutate(u.userId); }}
+                              className="text-fg-dim hover:text-rose-500 p-1.5 hover:bg-rose-500/10 rounded-lg cursor-pointer inline-flex items-center justify-center border-none bg-transparent"
+                              title="Delete User"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

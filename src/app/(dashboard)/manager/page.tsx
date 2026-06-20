@@ -57,8 +57,7 @@ export default function ManagerDashboard() {
   }, [urlFacultyId]);
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
   const [activeSubjectTab, setActiveSubjectTab] = useState("all");
-  const [view, setView] = useState<"roster" | "analytics" | "cohorts" | "rating">("roster");
-  const [selectedCohort, setSelectedCohort] = useState<string>("June EduSkill");
+  const [view, setView] = useState<"roster" | "analytics" | "rating">("roster");
   const [activeCohort, setActiveCohort] = useState<string>("June EduSkill");
 
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
@@ -150,12 +149,12 @@ export default function ManagerDashboard() {
       let matchVideoCount = true;
       if (videoCountFilter === "0") {
         matchVideoCount = r.videoCount === 0;
-      } else if (videoCountFilter === "1+") {
-        matchVideoCount = r.videoCount >= 1;
-      } else if (videoCountFilter === "3+") {
+      } else if (videoCountFilter === "1") {
+        matchVideoCount = r.videoCount === 1;
+      } else if (videoCountFilter === "2") {
+        matchVideoCount = r.videoCount === 2;
+      } else if (videoCountFilter === "3") {
         matchVideoCount = r.videoCount >= 3;
-      } else if (videoCountFilter === "5+") {
-        matchVideoCount = r.videoCount >= 5;
       }
 
       return matchSearch && matchSubject && matchVideoCount;
@@ -209,7 +208,6 @@ export default function ManagerDashboard() {
                 { id: "roster" as const, label: "Roster", icon: LayoutGrid },
                 { id: "rating" as const, label: "Rating Queue", icon: ClipboardList },
                 { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
-                { id: "cohorts" as const, label: "Cohorts", icon: Users },
               ]
             ).map((v) => {
               const Icon = v.icon;
@@ -265,17 +263,6 @@ export default function ManagerDashboard() {
           >
             <ProgramAnalytics subjects={subjects} />
           </motion.div>
-        ) : view === "cohorts" ? (
-          <motion.div
-            key="cohorts"
-            className="flex-1 overflow-y-auto min-h-0 pr-1 no-scrollbar"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <CohortView selectedCohort={selectedCohort} onCohortChange={setSelectedCohort} />
-          </motion.div>
         ) : view === "rating" ? (
           <motion.div
             key="rating"
@@ -315,11 +302,13 @@ export default function ManagerDashboard() {
             </p>
           </div>
         </div>
+        {/* Commented out as per user request to hide Gradi
         <StatTile
           label="Analyses"
           value={aggQ.data?.totalAnalyses ?? 0}
           sub="by Gradi AI"
         />
+        */}
         <StatTile
           label="Manager Ratings"
           value={aggQ.data?.totalRatings ?? 0}
@@ -361,9 +350,9 @@ export default function ManagerDashboard() {
               >
                 <option value="all">All uploads</option>
                 <option value="0">0 videos</option>
-                <option value="1+">1+ videos</option>
-                <option value="3+">3+ videos</option>
-                <option value="5+">5+ videos</option>
+                <option value="1">1 video</option>
+                <option value="2">2 videos</option>
+                <option value="3">3+ videos</option>
               </select>
 
               <select
@@ -580,10 +569,10 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
 
       <div className="rounded-xl border border-border overflow-hidden">
       {/* Table header */}
-      <div className="grid grid-cols-[44px_1fr_70px_70px_70px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+      <div className="grid grid-cols-[44px_1fr_80px_70px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
         <span></span>
         <span>Title</span>
-        <span className="text-center">Gradi /25</span>
+        {/* <span className="text-center">Gradi /25</span> */}
         <span className="text-center">Manager</span>
         <span className="text-center">Status</span>
         <span className="text-center">Stats</span>
@@ -601,7 +590,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
         return (
           <div key={v.videoId}>
             <div
-              className="grid grid-cols-[44px_1fr_70px_70px_70px_70px_60px] gap-2 px-4 py-2.5 border-b border-border hover:bg-bg-elev/30 transition-colors items-center"
+              className="grid grid-cols-[44px_1fr_80px_70px_70px_60px] gap-2 px-4 py-2.5 border-b border-border hover:bg-bg-elev/30 transition-colors items-center"
             >
               {/* Thumbnail */}
               <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
@@ -624,7 +613,8 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
                 </p>
               </div>
 
-              {/* Gradi score /25 */}
+              {/* Gradi score /25 (commented out) */}
+              {/*
               <div className="text-center">
                 {gradiScore > 0 ? (
                   <span className="text-mono text-sm font-semibold" style={{ color: gradiScore >= 4 ? "var(--emerald)" : gradiScore >= 3 ? "var(--amber)" : "var(--fg-muted)" }}>
@@ -632,6 +622,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
                   </span>
                 ) : <span className="text-[10px] text-fg-dim">—</span>}
               </div>
+              */}
 
               <div className="text-center">
                 {(v as any).managerRating?.total !== undefined ? (
@@ -652,7 +643,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
                   v.status === "analyzing" ? "bg-amber-500/10 text-amber-400" :
                   "bg-fg/5 text-fg-muted"
                 )}>
-                  {v.status === "manager_rated" ? "done" : v.status === "gradi_done" ? "gradi" : v.status}
+                  {v.status === "manager_rated" ? "done" : "pending"}
                 </span>
               </div>
 
@@ -875,7 +866,8 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
 
         <div className="h-4 w-px bg-border" />
 
-        {/* Gradi analysis status */}
+        {/* Gradi analysis status (commented out as per user request) */}
+        {/*
         <div className="flex items-center gap-2">
           <span className="text-[10px] uppercase tracking-wider text-fg-muted font-semibold whitespace-nowrap">Gradi AI</span>
           <div className="flex items-center gap-0.5 rounded-full border border-border bg-bg-elev p-0.5">
@@ -899,6 +891,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
             ))}
           </div>
         </div>
+        */}
 
         <div className="h-4 w-px bg-border" />
 
@@ -962,11 +955,9 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
               <div className="text-center">
                 <span className={cn("inline-block px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium",
                   v.status === "manager_rated" ? "bg-emerald-500/10 text-emerald-400" :
-                  v.status === "gradi_done"    ? "bg-blue-500/10 text-blue-400" :
-                  v.status === "analyzing"     ? "bg-amber-500/10 text-amber-400" :
                   "bg-fg/5 text-fg-muted"
                 )}>
-                  {v.status === "manager_rated" ? "done" : v.status === "gradi_done" ? "gradi ✓" : v.status}
+                  {v.status === "manager_rated" ? "done" : "pending"}
                 </span>
               </div>
               {/* Score button */}
@@ -989,80 +980,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
   );
 }
 
-function CohortView({ selectedCohort, onCohortChange }: { selectedCohort: string; onCohortChange: (c: string) => void }) {
-  const cohortQ = useQuery({
-    queryKey: ["cohorts", selectedCohort],
-    queryFn: async () => {
-      const res = await fetch(`/api/cohorts?cohort=${encodeURIComponent(selectedCohort)}`);
-      return res.json() as Promise<{ cohorts: string[]; faculty: { userId: string; name: string; email: string; cohort: string; adjustToken: string | null; trackingLink: string | null }[]; total: number }>;
-    },
-  });
-
-  const cohorts = cohortQ.data?.cohorts ?? ["March EduSkill", "June EduSkill"];
-  const faculty = cohortQ.data?.faculty ?? [];
-
-  return (
-    <div className="space-y-5">
-      {/* Cohort selector */}
-      <div className="flex items-center gap-2">
-        {cohorts.map(c => (
-          <button key={c} onClick={() => onCohortChange(c)}
-            className={cn(
-              "relative px-4 py-2 rounded-full text-xs font-medium transition-colors isolate",
-              selectedCohort === c ? "text-white dark:text-neutral-900" : "text-fg-muted hover:text-fg border border-border"
-            )}>
-            {selectedCohort === c && <motion.span layoutId="cohort-pill" className="absolute inset-0 rounded-full bg-neutral-900 dark:bg-neutral-100 -z-10" transition={{ duration: 0.2 }} />}
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {/* Faculty list with tracking links */}
-      <div className="glass rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-[40px_1fr_200px_120px_100px] gap-2 px-5 py-3 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
-          <span>#</span>
-          <span>Faculty</span>
-          <span>Email</span>
-          <span className="text-center">Adjust Token</span>
-          <span className="text-center">Tracking Link</span>
-        </div>
-
-        {cohortQ.isLoading ? (
-          <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
-        ) : faculty.length === 0 ? (
-          <div className="py-8 text-center text-sm text-fg-muted">No faculty in this cohort</div>
-        ) : (
-          faculty.map((f, i) => (
-            <div key={f.userId} className="grid grid-cols-[40px_1fr_200px_120px_100px] gap-2 px-5 py-3 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
-              <span className="text-xs text-fg-muted text-mono">{i + 1}</span>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-fg truncate">{f.name}</p>
-              </div>
-              <span className="text-xs text-fg-muted truncate">{f.email}</span>
-              <div className="text-center">
-                {f.adjustToken ? (
-                  <span className="text-mono text-[11px] px-2 py-0.5 rounded bg-bg-elev border border-border text-fg-muted">{f.adjustToken}</span>
-                ) : <span className="text-[10px] text-fg-dim">—</span>}
-              </div>
-              <div className="text-center">
-                {f.trackingLink ? (
-                  <a href={f.trackingLink} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors">
-                    <LinkIcon className="h-3 w-3" /> Link
-                  </a>
-                ) : <span className="text-[10px] text-fg-dim">—</span>}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      <p className="text-[10px] text-fg-dim">
-        {faculty.length} faculty in {selectedCohort} · Tracking via Adjust
-      </p>
-    </div>
-  );
-}
+// CohortView component removed.
 
 function MarchEduSkillDashboard() {
   const TARGET_INSTALLS = 100;
@@ -1197,12 +1115,12 @@ function MarchEduSkillDashboard() {
       let matchVideoCount = true;
       if (videoCountFilter === "0") {
         matchVideoCount = r.videoCount === 0;
-      } else if (videoCountFilter === "1+") {
-        matchVideoCount = r.videoCount >= 1;
-      } else if (videoCountFilter === "3+") {
+      } else if (videoCountFilter === "1") {
+        matchVideoCount = r.videoCount === 1;
+      } else if (videoCountFilter === "2") {
+        matchVideoCount = r.videoCount === 2;
+      } else if (videoCountFilter === "3") {
         matchVideoCount = r.videoCount >= 3;
-      } else if (videoCountFilter === "5+") {
-        matchVideoCount = r.videoCount >= 5;
       }
 
       return matchSearch && matchSub && matchVideoCount;
@@ -1313,9 +1231,9 @@ function MarchEduSkillDashboard() {
               >
                 <option value="all">All uploads</option>
                 <option value="0">0 videos</option>
-                <option value="1+">1+ videos</option>
-                <option value="3+">3+ videos</option>
-                <option value="5+">5+ videos</option>
+                <option value="1">1 video</option>
+                <option value="2">2 videos</option>
+                <option value="3">3+ videos</option>
               </select>
 
               <select

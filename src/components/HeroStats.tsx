@@ -53,7 +53,7 @@ export function HeroStats({
       <div className="flex flex-col md:flex-row md:items-center gap-8">
         {/* Score ring + name */}
         <div className="flex items-center gap-6">
-          <ScoreRing score={avgScore} size={120} stroke={8} label="GRADI AVG" />
+          <ScoreRing score={avgScore} max={25} size={120} stroke={8} label="MANAGER AVG" />
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-fg-muted">
               Welcome

@@ -158,7 +158,7 @@ function LiveVideoLog({ data, loading, refetch }: { data: LiveRow[]; loading: bo
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)", position: "sticky", top: 0, background: "var(--bg-elev)", zIndex: 2 }}>
-                {["Trainee", "Date", "Subject", "Board", "TLM", "Energy", "Delivery", "Hook", "Manager /25", "Gradi AI /25", "Total /50", "Status", "Link"].map(h => (
+                {["Trainee", "Date", "Subject", "Board", "TLM", "Energy", "Delivery", "Hook", "Manager /25", "Status", "Link"].map(h => (
                   <th key={h} style={{
                     padding: "8px 12px",
                     textAlign: ["Trainee", "Date", "Subject", "Status"].includes(h) ? "left" : "right",
@@ -190,8 +190,8 @@ function LiveVideoLog({ data, loading, refetch }: { data: LiveRow[]; loading: bo
                       </td>
                     ))}
                     <ScoreCell value={r.managerTotal} max={25} na={!hasRating} />
-                    <ScoreCell value={r.gradiContrib} max={25} na={!hasGradi} />
-                    <ScoreCell value={r.combinedTotal} max={50} na={!hasRating && !hasGradi} bold />
+                    {/* <ScoreCell value={r.gradiContrib} max={25} na={!hasGradi} /> */}
+                    {/* <ScoreCell value={r.combinedTotal} max={50} na={!hasRating && !hasGradi} bold /> */}
                     <td style={{ padding: "6px 12px" }}>
                       <span style={{
                         fontSize: 10, fontWeight: 500, padding: "2px 8px", borderRadius: 999, textTransform: "uppercase", letterSpacing: "0.08em",

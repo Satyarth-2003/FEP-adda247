@@ -7,7 +7,7 @@ import { extractYouTubeId } from "@/lib/utils";
 import { Portal } from "./Portal";
 
 interface VideoUploaderProps {
-  subjects: Subject[];
+  subjects?: Subject[];
   onSuccess: () => void;
   managerMode?: boolean;
   facultyList?: { userId: string; name: string }[];
@@ -20,7 +20,6 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [fetchingTitle, setFetchingTitle] = useState(false);
-  const [subjectId, setSubjectId] = useState(subjects[0]?.subjectId ?? "");
   const [facultyId, setFacultyId] = useState(facultyList?.[0]?.userId ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -65,14 +64,11 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
     }
     setLoading(true);
     try {
-      const subj = subjects.find((s) => s.subjectId === subjectId);
       const res = await fetch("/api/videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           youtubeUrl: url,
-          subjectId: subjectId || subjects[0]?.subjectId || "",
-          subject: subj?.name ?? subjectId ?? "",
           title: title || "Untitled Video",
           ...(managerMode && facultyId ? { facultyId } : {}),
         }),
@@ -126,10 +122,10 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
               <div className="flex items-start justify-between mb-5">
                 <div>
                   <h2 className="text-lg font-semibold tracking-tight">
-                    Upload YouTube Video Link
+                    Upload YouTube Video
                   </h2>
                   <p className="text-xs text-fg-muted mt-0.5">
-                    Paste a YouTube link — title auto-fetched, Gradi will analyze it.
+                    Paste a YouTube link — title &amp; subject auto-resolved.
                   </p>
                 </div>
                 <button
@@ -142,28 +138,6 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
               </div>
 
               <form onSubmit={submit} className="space-y-4">
-                <div>
-                  <label className="block text-[11px] font-medium uppercase tracking-wider text-fg-muted mb-2">
-                    YouTube URL
-                  </label>
-                  <div className="relative">
-                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-fg-muted" />
-                    <input
-                      type="url"
-                      value={url}
-                      onChange={(e) => handleUrlChange(e.target.value)}
-                      required
-                      placeholder="https://youtube.com/watch?v=..."
-                      className="w-full rounded-lg border border-border bg-bg-elev/60 pl-9 pr-3 py-2.5 text-sm outline-none focus:border-fg/30"
-                    />
-                  </div>
-                  {title && (
-                    <p className="mt-2 text-xs text-fg-muted flex items-center gap-1">
-                      {fetchingTitle ? "Fetching..." : `📹 ${title}`}
-                    </p>
-                  )}
-                </div>
-
                 {/* Faculty Selection (Only in Manager Mode) */}
                 {managerMode && facultyList && facultyList.length > 0 && (
                   <div>
@@ -185,7 +159,27 @@ export function VideoUploader({ subjects, onSuccess, managerMode, facultyList, a
                   </div>
                 )}
 
-
+                <div>
+                  <label className="block text-[11px] font-medium uppercase tracking-wider text-fg-muted mb-2">
+                    YouTube URL
+                  </label>
+                  <div className="relative">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-fg-muted" />
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) => handleUrlChange(e.target.value)}
+                      required
+                      placeholder="https://youtube.com/watch?v=..."
+                      className="w-full rounded-lg border border-border bg-bg-elev/60 pl-9 pr-3 py-2.5 text-sm outline-none focus:border-fg/30"
+                    />
+                  </div>
+                  {(fetchingTitle || title) && (
+                    <p className="mt-2 text-xs text-fg-muted flex items-center gap-1">
+                      {fetchingTitle ? "Fetching title..." : `📹 ${title}`}
+                    </p>
+                  )}
+                </div>
 
                 {error && (
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-400">

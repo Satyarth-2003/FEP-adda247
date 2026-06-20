@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X } from "lucide-react";
 import { VideoUploader } from "./VideoUploader";
-import type { Subject, JWTPayload } from "@/types";
+import type { JWTPayload } from "@/types";
 
 export function GlobalUploadFab() {
   const [showUploader, setShowUploader] = useState(false);
@@ -14,10 +14,6 @@ export function GlobalUploadFab() {
     queryFn: () => fetch("/api/auth/me").then(r => r.json()),
   });
 
-  const subjectsQ = useQuery<{ subjects: Subject[] }>({
-    queryKey: ["subjects"],
-    queryFn: () => fetch("/api/subjects").then(r => r.json()),
-  });
 
   const usersQ = useQuery<{ users: { userId: string; name: string }[] }>({
     queryKey: ["admin-users-fab"],
@@ -33,7 +29,6 @@ export function GlobalUploadFab() {
 
   if (!isManagerOrAdmin) return null;
 
-  const subjects = subjectsQ.data?.subjects ?? [];
   const facultyList = (usersQ.data?.users ?? []).map(u => ({ userId: u.userId, name: u.name }));
 
   return (
@@ -60,9 +55,8 @@ export function GlobalUploadFab() {
       </motion.button>
 
       {/* Reuse VideoUploader in headless mode (auto-open) */}
-      {showUploader && subjects.length > 0 && (
+      {showUploader && (
         <InlineUploader
-          subjects={subjects}
           facultyList={facultyList}
           onClose={() => setShowUploader(false)}
         />
@@ -72,17 +66,14 @@ export function GlobalUploadFab() {
 }
 
 function InlineUploader({
-  subjects,
   facultyList,
   onClose,
 }: {
-  subjects: Subject[];
   facultyList: { userId: string; name: string }[];
   onClose: () => void;
 }) {
   return (
     <VideoUploader
-      subjects={subjects}
       onSuccess={onClose}
       managerMode
       facultyList={facultyList}

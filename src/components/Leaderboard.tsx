@@ -28,8 +28,8 @@ export function Leaderboard({
     <div className="space-y-2">
       <AnimatePresence>
         {rows.map((row, i) => {
-          const displayScore = row.avgCombinedScore !== undefined ? row.avgCombinedScore : row.avgGradiScore * 10;
-          const color = scoreColor(displayScore / 10);
+          const displayScore = row.avgCombinedScore !== undefined ? row.avgCombinedScore : row.avgGradiScore;
+          const color = scoreColor(displayScore / 5);
           const isSelected = selectedId === row.userId;
           return (
             <motion.button
@@ -95,7 +95,7 @@ export function Leaderboard({
                     {displayScore.toFixed(1)}
                   </span>
                   <span className="text-[9px] uppercase tracking-wider text-fg-dim">
-                    /50
+                    /25
                   </span>
                 </div>
                 <TrendingUp

@@ -55,8 +55,8 @@ export async function GET() {
     const delivery = r?.delivery ?? null;
     const hook = r?.hook ?? null;
     const managerTotal = r ? (boardWork ?? 0) + (visualTLM ?? 0) + (energy ?? 0) + (delivery ?? 0) + (hook ?? 0) : null;
-    const gradiContrib = a ? Math.round(a.gradiScore * 5 * 10) / 10 : null;
-    const combinedTotal = managerTotal != null && gradiContrib != null ? Number((managerTotal + gradiContrib).toFixed(1)) : null;
+    const gradiContrib = null;
+    const combinedTotal = managerTotal;
 
     return {
       trainee: v.facultyName ?? v.facultyId,

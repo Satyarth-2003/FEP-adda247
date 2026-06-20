@@ -491,11 +491,17 @@ export async function GET(req: Request) {
     ratingMap.get(r.videoId)!.push(r);
   }
   const ratedCount = filteredVideos.filter((v) => v.status === "manager_rated").length;
-  const scores = analysisChunks
-    .map((a) => a.gradiScore)
-    .filter((n) => n > 0);
-  const avg =
-    scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const managerScores = filteredVideos
+    .map((v) => {
+      const vRatings = ratingMap.get(v.videoId) || [];
+      const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
+      return r ? r.total : null;
+    })
+    .filter((s): s is number => s !== null);
+  const avgManager =
+    managerScores.length > 0
+      ? managerScores.reduce((a, b) => a + b, 0) / managerScores.length
+      : 0;
 
   const bySubject: Record<
     string,
@@ -527,7 +533,7 @@ export async function GET(req: Request) {
     subjects: facultyUser?.subjects || [],
     avatarUrl: facultyUser?.avatarUrl,
     totalVideos: filteredVideos.length,
-    avgGradiScore: Number(avg.toFixed(2)),
+    avgGradiScore: Number(avgManager.toFixed(2)),
     pctRatedByManager:
       filteredVideos.length > 0
         ? Math.round((ratedCount / filteredVideos.length) * 100)
@@ -769,25 +775,17 @@ async function aggregateAll(
   } else {
     leaderboard = users.map((u) => {
       const own = filteredVideos.filter((v) => v.facultyId === u.userId);
-      const scores = own
-        .map((v) => aMap.get(v.videoId)?.gradiScore || 0)
-        .filter((n) => n > 0);
-      const avg =
-        scores.length > 0
-          ? scores.reduce((a, b) => a + b, 0) / scores.length
-          : 0;
+      const managerScoresForUser = own
+        .map((v) => {
+          const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
+          const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
+          return r ? r.total : null;
+        })
+        .filter((s): s is number => s !== null);
 
-      const combinedScores = own.map((v) => {
-        const a = aMap.get(v.videoId);
-        const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
-        const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
-        const gradiContrib = a ? Math.round(a.gradiScore * 5 * 10) / 10 : 0;
-        const managerScore = r ? r.total : 0;
-        return gradiContrib + managerScore;
-      });
       const avgCombined =
-        combinedScores.length > 0
-          ? combinedScores.reduce((a, b) => a + b, 0) / combinedScores.length
+        managerScoresForUser.length > 0
+          ? managerScoresForUser.reduce((a, b) => a + b, 0) / managerScoresForUser.length
           : 0;
 
       const yt = ytMap.get(u.userId);
@@ -798,7 +796,7 @@ async function aggregateAll(
         email: u.email,
         subjects: u.subjects,
         videoCount: own.length,
-        avgGradiScore: Number(avg.toFixed(2)),
+        avgGradiScore: Number(avgCombined.toFixed(2)),
         avgCombinedScore: Number(avgCombined.toFixed(2)),
         totalViews: week === "all" ? (yt?.totalViews ?? 0) : own.reduce((sum, v) => sum + (v.views ?? 0), 0),
         totalLikes: week === "all" ? (yt?.totalLikes ?? 0) : own.reduce((sum, v) => sum + (v.likes ?? 0), 0),
@@ -838,6 +836,15 @@ async function aggregateAll(
     subjectAgg[sid].n++;
   }
 
+  const videosWithScores = filteredVideos.map((v) => {
+    const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
+    const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
+    return {
+      ...v,
+      managerScore: r ? r.total : null,
+    };
+  });
+
   return NextResponse.json({
     leaderboard,
     totalFaculty: users.length,
@@ -845,5 +852,6 @@ async function aggregateAll(
     totalAnalyses: analyses.length,
     totalRatings: ratings.length,
     subjectAgg,
+    videos: videosWithScores,
   });
 }

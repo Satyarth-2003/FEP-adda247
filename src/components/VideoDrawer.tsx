@@ -155,13 +155,12 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
     ? { boardWork: ratings.boardWork, visualTLM: ratings.visualTLM, energy: ratings.energy, delivery: ratings.delivery, hook: ratings.hook, total: managerTotal }
     : data?.managerRatings?.[0] ?? null;
   const activeManagerScore = managerMode ? managerTotal : (displayedRating ? displayedRating.total : 0);
-  // Gradi: raw 0–5 × 5 = 0–25 (half of 50). Manager: 5 params × 1–5 = 5–25 (half of 50). Combined ring = /50.
-  // For display purposes: show each score /50 by doubling (Gradi ×10, Manager ×2).
-  const gradiContrib = data?.analysis ? Math.round(data.analysis.gradiScore * 5 * 10) / 10 : 0; // 0–25 for ring
+  // Manager: 5 params × 1–5 = 5–25. Combined ring = /25.
+  const gradiContrib = 0;
 
-  const combinedTotal = Number((activeManagerScore + gradiContrib).toFixed(1));
-  const combinedMax = 50;
-  const combinedLabel = "/ 50";
+  const combinedTotal = Number(activeManagerScore.toFixed(1));
+  const combinedMax = 25;
+  const combinedLabel = "/ 25";
 
   const ytId = data?.video ? extractYouTubeId(data.video.youtubeUrl) : null;
 
@@ -285,13 +284,12 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                           <>
                             {/* Combined score */}
                             <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 24px" }}>
-                              <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 16 }}>Combined Score</p>
+                              <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--fg-muted)", marginBottom: 16 }}>Manager Score</p>
                               <div className="flex items-center gap-6">
                                 <ScoreRing key={`ring-${videoId}`} score={combinedTotal} max={combinedMax} size={108} stroke={8} label={combinedLabel} />
                                 <div className="flex-1 space-y-3">
                                   <ScoreHalf key={"mgr-" + videoId} label="Manager Score" value={activeManagerScore} max={25} isEmpty={!managerMode && !displayedRating} emptyLabel="Not yet rated" />
-                                  <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" />
-                                  {/* Note: Each half is /25, combined = /50 */}
+                                  {/* <ScoreHalf key={"gradi-" + videoId} label="Gradi AI Score" value={gradiContrib} max={25} isEmpty={!data.analysis} emptyLabel="Analysis pending" /> */}
                                 </div>
                               </div>
                             </div>
@@ -306,7 +304,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                   </div>
                                   <div className="flex items-center gap-3">
                                     <div className="text-right">
-                                      <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(managerTotal / 5) }}>{managerTotal * 2}<span className="text-sm font-normal text-fg-muted">/50</span></div>
+                                      <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(managerTotal / 5) }}>{managerTotal}<span className="text-sm font-normal text-fg-muted">/25</span></div>
                                       <div className="text-[10px] text-fg-muted">Manager score</div>
                                     </div>
                                     <AnimatePresence mode="wait">
@@ -336,7 +334,8 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                               </div>
                             )}
 
-                            {/* GRADI ANALYSIS - after manager rating */}
+                            {/* GRADI ANALYSIS - after manager rating (commented out) */}
+                            {/*
                             {data.analysis && (
                               <div className="space-y-4">
                                 <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
@@ -387,6 +386,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                 )}
                               </div>
                             )}
+                            */}
 
                             {/* Faculty: received manager score */}
                             {!managerMode && displayedRating && (
@@ -396,7 +396,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                     <h3 className="text-sm font-semibold">Manager Score Card</h3>
                                     <p className="text-[11px] text-fg-muted mt-0.5">{data.managerRatings[0]?.managerName}</p>
                                   </div>
-                                  <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(displayedRating.total / 5) }}>{displayedRating.total * 2}<span className="text-sm font-normal text-fg-muted">/50</span></div>
+                                  <div className="text-mono text-2xl font-bold" style={{ color: scoreColor(displayedRating.total / 5) }}>{displayedRating.total}<span className="text-sm font-normal text-fg-muted">/25</span></div>
                                 </div>
                                 <div className="space-y-3">
                                   {MANAGER_PARAMS.map(p => <ParamBar key={p.key} label={p.label} value={(displayedRating as Record<string, unknown>)[p.key] as number ?? 0} delay={0} />)}
@@ -411,6 +411,8 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                             )}
 
                             {/* No Gradi yet */}
+                            {/* No Gradi yet (commented out) */}
+                            {/*
                             {!data.analysis && (
                               <div style={{ background: "var(--bg)", border: "1px dashed var(--border)", borderRadius: 12, padding: "24px", textAlign: "center" }} className="space-y-4">
                                 {data.video.status === "no_transcript" ? (
@@ -446,6 +448,7 @@ export function VideoDrawer({ videoId, onClose, managerMode, managerId, onRated,
                                 </button>
                               </div>
                             )}
+                            */}
                           </>
                         )}
                       </div>

@@ -23,7 +23,7 @@ export function ScoreRing({
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const pct = Math.max(0, Math.min(1, score / max));
-  const color = scoreColor(score);
+  const color = scoreColor((score / max) * 5);
 
   const progress = useMotionValue(0);
   const dashOffset = useTransform(

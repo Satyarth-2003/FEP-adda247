@@ -75,7 +75,10 @@ export function ProgramAnalytics({ subjects }: Props) {
     return allRows.filter(r =>
       (facultyId === "all" || r.facultyId === facultyId) &&
       (subjectId === "all" || r.subjectId === subjectId) &&
-      (statusFilter === "all" || r.status === statusFilter)
+      (statusFilter === "all" || 
+        (statusFilter === "manager_rated" && r.status === "manager_rated") ||
+        (statusFilter === "pending" && r.status !== "manager_rated")
+      )
     );
   }, [allRows, facultyId, subjectId, statusFilter]);
 
@@ -151,12 +154,12 @@ export function ProgramAnalytics({ subjects }: Props) {
   // ── Hero stats
   const stats = useMemo(() => {
     const ratedCount = rows.filter(r => r.status === "manager_rated").length;
-    const gradiAvg = rows.filter(r => r.gradiScore != null).map(r => r.gradiScore!);
-    const avg = gradiAvg.length ? gradiAvg.reduce((a, b) => a + b, 0) / gradiAvg.length : 0;
+    const mgrScores = rows.filter(r => r.managerTotal != null).map(r => r.managerTotal!);
+    const avg = mgrScores.length ? mgrScores.reduce((a, b) => a + b, 0) / mgrScores.length : 0;
     return {
       total: rows.length,
       rated: ratedCount,
-      avgGradi: Number(avg.toFixed(2)),
+      avgManager: Number(avg.toFixed(2)),
       faculties: new Set(rows.map(r => r.facultyId)).size,
     };
   }, [rows]);
@@ -198,8 +201,7 @@ export function ProgramAnalytics({ subjects }: Props) {
               options={[
                 { value: "all", label: "All Status" },
                 { value: "manager_rated", label: "Manager Scored" },
-                { value: "gradi_done", label: "Gradi Done" },
-                { value: "analyzing", label: "Analyzing" },
+                { value: "pending", label: "Uploaded / Pending" },
               ]}
             />
           </div>
@@ -215,7 +217,7 @@ export function ProgramAnalytics({ subjects }: Props) {
       {/* Stat tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatTile icon={Video} label="Videos" value={stats.total} />
-        <StatTile icon={TrendingUp} label="Avg Gradi" value={stats.avgGradi.toFixed(2)} />
+        <StatTile icon={TrendingUp} label="Avg Manager" value={stats.avgManager.toFixed(2)} />
         <StatTile icon={Activity} label="Manager Scored" value={`${stats.rated}/${stats.total}`} />
         <StatTile icon={Users} label="Faculty" value={stats.faculties} />
       </div>
@@ -226,7 +228,8 @@ export function ProgramAnalytics({ subjects }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Pie 1 */}
+          {/* Pie 1: Score Distribution (commented out as per user request) */}
+          {/*
           <ChartCard title="Score Distribution" subtitle="Gradi AI score bands">
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -253,6 +256,7 @@ export function ProgramAnalytics({ subjects }: Props) {
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
+          */}
 
           {/* Pie 2 */}
           <ChartCard title="Videos by Subject" subtitle="Subject mix">
@@ -281,7 +285,8 @@ export function ProgramAnalytics({ subjects }: Props) {
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* Histogram 1: Score buckets */}
+          {/* Histogram 1: Score buckets (commented out as per user request) */}
+          {/*
           <ChartCard title="Score Histogram" subtitle="Videos in each Gradi band">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={scoreHistogram} margin={{ top: 16, right: 12, left: -12, bottom: 4 }}>
@@ -295,6 +300,7 @@ export function ProgramAnalytics({ subjects }: Props) {
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
+          */}
 
           {/* Histogram 2: Manager parameter averages */}
           <ChartCard title="Manager Parameter Averages" subtitle="Mean score across selected videos">

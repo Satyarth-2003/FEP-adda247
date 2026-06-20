@@ -12,21 +12,20 @@ const meta: Record<
     color: "text-sky-400 bg-sky-400/10 border-sky-400/20",
   },
   analyzing: {
-    label: "Gradi Analyzing",
-    color: "text-amber-400 bg-amber-400/10 border-amber-400/20",
-    pulse: true,
+    label: "Pending",
+    color: "text-sky-400 bg-sky-400/10 border-sky-400/20",
   },
   gradi_done: {
-    label: "Gradi Done",
-    color: "text-violet-400 bg-violet-400/10 border-violet-400/20",
+    label: "Uploaded",
+    color: "text-sky-400 bg-sky-400/10 border-sky-400/20",
   },
   manager_rated: {
     label: "Manager Scored",
     color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
   },
   no_transcript: {
-    label: "No Transcript",
-    color: "text-rose-400 bg-rose-400/10 border-rose-400/20",
+    label: "Uploaded",
+    color: "text-sky-400 bg-sky-400/10 border-sky-400/20",
   },
 };
 

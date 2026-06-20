@@ -1,14 +1,17 @@
 "use client";
 import { motion } from "framer-motion";
 import { Play } from "lucide-react";
-import type { Video, GradiAnalysis } from "@/types";
+import type { Video, GradiAnalysis, ManagerRating } from "@/types";
 import { ScoreRing } from "./ScoreRing";
 import { StatusChip } from "./StatusChip";
 import { relativeTime } from "@/lib/utils";
 import { SafeThumbnail } from "./SafeThumbnail";
 
 interface VideoCardProps {
-  video: Video & { analysis?: GradiAnalysis | null };
+  video: Video & { 
+    analysis?: GradiAnalysis | null;
+    managerRating?: ManagerRating | null;
+  };
   onClick: () => void;
   index?: number;
 }
@@ -34,11 +37,12 @@ export function VideoCard({ video, onClick, index = 0 }: VideoCardProps) {
         <div className="absolute top-3 left-3">
           <StatusChip status={video.status} />
         </div>
-        {video.analysis?.gradiScore ? (
+        {video.managerRating?.total ? (
           <div className="absolute -bottom-3 right-3">
             <div className="rounded-full bg-bg-card border border-border p-1">
               <ScoreRing
-                score={video.analysis.gradiScore}
+                score={video.managerRating.total}
+                max={25}
                 size={56}
                 stroke={4}
                 showLabel

@@ -2,9 +2,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Loader2, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Trophy, Loader2, ArrowRight, Play, ExternalLink } from "lucide-react";
+import { cn, youtubeThumb } from "@/lib/utils";
 import Link from "next/link";
+import { VideoDrawer } from "@/components/VideoDrawer";
 
 interface FacultyLeaderRow {
   userId: string;
@@ -13,6 +14,7 @@ interface FacultyLeaderRow {
   subjects: string[];
   videoCount: number;
   avgGradiScore: number;
+  avgCombinedScore?: number;
   installs?: number;
   views?: number;
   subscribersGained?: number;
@@ -27,9 +29,10 @@ function getAvatarColor(name: string) {
 
 export default function LeaderboardPage() {
   const [selectedCohort, setSelectedCohort] = useState<"June EduSkill" | "March EduSkill">("June EduSkill");
-  const [selectedTab, setSelectedTab] = useState<string>("total");
+  const [selectedTab, setSelectedTab] = useState<string>("faculties");
   const [showAllTop, setShowAllTop] = useState(false);
   const [showAllBottom, setShowAllBottom] = useState(false);
+  const [openVideoId, setOpenVideoId] = useState<string | null>(null);
 
   const meQ = useQuery({
     queryKey: ["me"],
@@ -39,14 +42,14 @@ export default function LeaderboardPage() {
   const isManager = user?.role === "eduskill_manager" || user?.role === "eduskill_admin";
 
   // Fetch March EduSkill stats
-  const marchQ = useQuery<{ leaderboard: FacultyLeaderRow[] }>({
+  const marchQ = useQuery<{ leaderboard: FacultyLeaderRow[]; videos?: any[] }>({
     queryKey: ["leaderboard-march"],
     queryFn: () => fetch("/api/stats?scope=all&cohort=March+EduSkill").then(r => r.json()),
     refetchInterval: 15_000,
   });
 
   // Fetch June EduSkill stats
-  const juneQ = useQuery<{ leaderboard: FacultyLeaderRow[] }>({
+  const juneQ = useQuery<{ leaderboard: FacultyLeaderRow[]; videos?: any[] }>({
     queryKey: ["leaderboard-june"],
     queryFn: () => fetch("/api/stats?scope=all&cohort=June+EduSkill").then(r => r.json()),
     refetchInterval: 15_000,
@@ -61,10 +64,32 @@ export default function LeaderboardPage() {
     ? (showAllBottom ? list.slice(-bottomCount) : list.slice(-bottomCount).slice(0, 10))
     : [];
 
-  // Tabs: Total
-  const tabs = [
-    { key: "total", label: "Total" }
-  ];
+  // Filter and sort videos that have been rated
+  const ratedVideos = useMemo(() => {
+    const rawVideos = (selectedCohort === "June EduSkill" ? juneQ.data?.videos : marchQ.data?.videos) ?? [];
+    return rawVideos.filter(v => v.managerScore !== null && v.managerScore !== undefined);
+  }, [selectedCohort, juneQ.data, marchQ.data]);
+
+  const topVideos = useMemo(() => {
+    return [...ratedVideos]
+      .sort((a, b) => b.managerScore - a.managerScore || new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+      .slice(0, 20);
+  }, [ratedVideos]);
+
+  const bottomVideos = useMemo(() => {
+    return [...ratedVideos]
+      .sort((a, b) => a.managerScore - b.managerScore || new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime())
+      .slice(0, 20);
+  }, [ratedVideos]);
+
+  // Tabs: Faculties & Videos (Videos only for June cohort)
+  const tabs = useMemo(() => {
+    const list = [{ key: "faculties", label: "Faculties" }];
+    if (selectedCohort === "June EduSkill") {
+      list.push({ key: "videos", label: "Videos" });
+    }
+    return list;
+  }, [selectedCohort]);
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-fg-muted" /></div>;
@@ -85,7 +110,7 @@ export default function LeaderboardPage() {
         {/* Cohort Selector */}
         <div className="flex items-center gap-1 rounded-xl border border-border bg-bg-elev/50 p-1 w-fit">
           {(["June EduSkill", "March EduSkill"] as const).map(c => (
-            <button key={c} onClick={() => { setSelectedCohort(c); setSelectedTab("total"); }}
+            <button key={c} onClick={() => { setSelectedCohort(c); setSelectedTab("faculties"); }}
               className={cn(
                 "rounded-lg px-4 py-1.5 text-xs font-medium transition-all cursor-pointer",
                 selectedCohort === c
@@ -98,182 +123,378 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
-      {/* Week selector nav */}
+      {/* Navigation tabs */}
       <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-2 border-b border-border/40">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setSelectedTab(t.key)}
-            className={cn("relative px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors isolate",
-              selectedTab === t.key ? "text-white" : "text-fg-muted hover:text-fg border border-border")}>
+            className={cn("relative px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors isolate cursor-pointer",
+              selectedTab === t.key ? "text-white" : "text-fg-muted hover:text-fg border border-border")}
+          >
             {selectedTab === t.key && <motion.span layoutId="lb-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* Side-by-Side Leaderboards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Performers */}
-        <div className="glass rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h3 className="text-sm font-semibold text-emerald-400">Top Performers</h3>
-            </div>
-            <span className="text-[10px] rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5">
-              {list.length} faculty members
-            </span>
-          </div>
-
-          {list.length === 0 ? (
-            <p className="text-xs text-fg-muted text-center py-8">No data loaded yet</p>
-          ) : (
-            <div className="space-y-2">
-              <div className={cn(
-                "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
-                selectedCohort === "March EduSkill" 
-                  ? "grid-cols-[40px_1fr_100px_40px]" 
-                  : "grid-cols-[40px_1fr_120px_40px]"
-              )}>
-                <span>Rank</span>
-                <span>Faculty</span>
-                {selectedCohort === "March EduSkill" ? (
-                  <span className="text-right">Installs</span>
-                ) : (
-                  <span className="text-right">Avg Score /50</span>
-                )}
-                <span className="text-right font-sans lowercase">view</span>
+      {/* Side-by-Side Content panels */}
+      <AnimatePresence mode="wait">
+        {selectedTab === "faculties" ? (
+          <motion.div
+            key="faculties"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          >
+            {/* Top Performers */}
+            <div className="glass rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="text-sm font-semibold text-emerald-400">Top Performers</h3>
+                </div>
+                <span className="text-[10px] rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5">
+                  {list.length} faculty members
+                </span>
               </div>
 
-              <AnimatePresence>
-                {topPerformers.map((f, i) => {
-                  const idx = list.indexOf(f);
-                  return (
-                    <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
-                      <Link href={isManager ? `/manager?facultyId=${f.userId}` : `/faculty?facultyId=${f.userId}`} className={cn(
-                        "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
-                        selectedCohort === "March EduSkill" 
-                          ? "grid-cols-[40px_1fr_100px_40px]" 
-                          : "grid-cols-[40px_1fr_120px_40px]"
-                      )}>
-                        <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono",
-                          idx === 0 ? "bg-amber-500/15 text-amber-500 border border-amber-500/30" : idx < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
-                        )}>{idx + 1}</span>
-                        
-                        <div className="flex items-center gap-3 min-w-0">
-                          <ColorAvatar name={f.name} />
-                          <div className="min-w-0">
-                            <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
-                            <span className="block text-[10px] text-fg-dim truncate">{f.email}</span>
-                          </div>
-                        </div>
+              {list.length === 0 ? (
+                <p className="text-xs text-fg-muted text-center py-8">No data loaded yet</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className={cn(
+                    "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
+                    selectedCohort === "March EduSkill" 
+                      ? "grid-cols-[40px_1fr_100px_40px]" 
+                      : "grid-cols-[40px_1fr_120px_40px]"
+                  )}>
+                    <span>Rank</span>
+                    <span>Faculty</span>
+                    {selectedCohort === "March EduSkill" ? (
+                      <span className="text-right">Installs</span>
+                    ) : (
+                      <span className="text-right">Avg Score /25</span>
+                    )}
+                    <span className="text-right font-sans lowercase">view</span>
+                  </div>
 
-                        {selectedCohort === "March EduSkill" ? (
-                          <span className="text-mono text-sm font-bold text-emerald-400 text-right">{f.installs}</span>
-                        ) : (
-                          <span className="text-mono text-sm font-bold text-emerald-400 text-right">
-                            {f.avgGradiScore ? (f.avgGradiScore * 10).toFixed(1) : "—"}
-                          </span>
-                        )}
+                  <AnimatePresence>
+                    {topPerformers.map((f, i) => {
+                      const idx = list.indexOf(f);
+                      return (
+                        <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
+                          <Link href={isManager ? `/manager?facultyId=${f.userId}` : `/faculty?facultyId=${f.userId}`} className={cn(
+                            "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
+                            selectedCohort === "March EduSkill" 
+                              ? "grid-cols-[40px_1fr_100px_40px]" 
+                              : "grid-cols-[40px_1fr_120px_40px]"
+                          )}>
+                            <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono",
+                              idx === 0 ? "bg-amber-500/15 text-amber-500 border border-amber-500/30" : idx < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
+                            )}>{idx + 1}</span>
+                            
+                            <div className="flex items-center gap-3 min-w-0">
+                              <ColorAvatar name={f.name} />
+                              <div className="min-w-0">
+                                <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
+                                <span className="block text-[10px] text-fg-dim truncate">{f.email}</span>
+                              </div>
+                            </div>
 
-                        <div className="flex justify-end">
-                          <ArrowRight className="h-4 w-4 text-fg-muted hover:text-fg" />
-                        </div>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+                            {selectedCohort === "March EduSkill" ? (
+                              <span className="text-mono text-sm font-bold text-emerald-400 text-right">{f.installs}</span>
+                            ) : (
+                              <span className="text-mono text-sm font-bold text-emerald-400 text-right">
+                                {f.avgCombinedScore !== undefined ? f.avgCombinedScore.toFixed(1) : "—"}
+                              </span>
+                            )}
 
-              {list.length > 10 && (
-                <button onClick={() => setShowAllTop(p => !p)}
-                  className="mt-3 w-full text-center text-[11px] font-medium text-fg-muted hover:text-fg transition-colors py-2 rounded-lg border border-border hover:border-border-strong cursor-pointer">
-                  {showAllTop ? `Show less` : `Show all ${list.length} faculty`}
-                </button>
+                            <div className="flex justify-end">
+                              <ArrowRight className="h-4 w-4 text-fg-muted hover:text-fg" />
+                            </div>
+                          </Link>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+
+                  {list.length > 10 && (
+                    <button onClick={() => setShowAllTop(p => !p)}
+                      className="mt-3 w-full text-center text-[11px] font-medium text-fg-muted hover:text-fg transition-colors py-2 rounded-lg border border-border hover:border-border-strong cursor-pointer">
+                      {showAllTop ? `Show less` : `Show all ${list.length} faculty`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Bottom Performers */}
-        <div className="glass rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
-              <h3 className="text-sm font-semibold text-rose-400">Needs Improvement</h3>
-            </div>
-            <span className="text-[10px] rounded-full border border-rose-500/25 bg-rose-500/10 text-rose-400 px-2.5 py-0.5">
-              {bottomCount} faculty members
-            </span>
-          </div>
-
-          {bottomPerformers.length === 0 ? (
-            <p className="text-xs text-fg-muted text-center py-8">No data loaded yet</p>
-          ) : (
-            <div className="space-y-2">
-              <div className={cn(
-                "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
-                selectedCohort === "March EduSkill" 
-                  ? "grid-cols-[40px_1fr_100px_40px]" 
-                  : "grid-cols-[40px_1fr_120px_40px]"
-              )}>
-                <span>Rank</span>
-                <span>Faculty</span>
-                {selectedCohort === "March EduSkill" ? (
-                  <span className="text-right">Installs</span>
-                ) : (
-                  <span className="text-right">Avg Score /50</span>
-                )}
-                <span className="text-right font-sans lowercase">view</span>
+            {/* Bottom Performers */}
+            <div className="glass rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
+                  <h3 className="text-sm font-semibold text-rose-400">Needs Improvement</h3>
+                </div>
+                <span className="text-[10px] rounded-full border border-rose-500/25 bg-rose-500/10 text-rose-400 px-2.5 py-0.5">
+                  {bottomCount} faculty members
+                </span>
               </div>
 
-              <AnimatePresence>
-                {bottomPerformers.map((f, i) => {
-                  const idx = list.indexOf(f);
-                  return (
-                    <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
-                      <Link href={isManager ? `/manager?facultyId=${f.userId}` : `/faculty?facultyId=${f.userId}`} className={cn(
-                        "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
-                        selectedCohort === "March EduSkill" 
-                          ? "grid-cols-[40px_1fr_100px_40px]" 
-                          : "grid-cols-[40px_1fr_120px_40px]"
-                      )}>
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono text-fg-muted">{idx + 1}</span>
-                        
-                        <div className="flex items-center gap-3 min-w-0">
-                          <ColorAvatar name={f.name} />
-                          <div className="min-w-0">
-                            <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
-                            <span className="block text-[10px] text-fg-dim truncate">{f.email}</span>
-                          </div>
-                        </div>
+              {bottomPerformers.length === 0 ? (
+                <p className="text-xs text-fg-muted text-center py-8">No data loaded yet</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className={cn(
+                    "grid gap-4 px-4 py-2 text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold",
+                    selectedCohort === "March EduSkill" 
+                      ? "grid-cols-[40px_1fr_100px_40px]" 
+                      : "grid-cols-[40px_1fr_120px_40px]"
+                  )}>
+                    <span>Rank</span>
+                    <span>Faculty</span>
+                    {selectedCohort === "March EduSkill" ? (
+                      <span className="text-right">Installs</span>
+                    ) : (
+                      <span className="text-right">Avg Score /25</span>
+                    )}
+                    <span className="text-right font-sans lowercase">view</span>
+                  </div>
 
-                        {selectedCohort === "March EduSkill" ? (
-                          <span className="text-mono text-sm font-bold text-rose-400 text-right">{f.installs}</span>
-                        ) : (
-                          <span className="text-mono text-sm font-bold text-rose-400 text-right">
-                            {f.avgGradiScore ? (f.avgGradiScore * 10).toFixed(1) : "—"}
-                          </span>
-                        )}
+                  <AnimatePresence>
+                    {bottomPerformers.map((f, i) => {
+                      const idx = list.indexOf(f);
+                      return (
+                        <motion.div key={f.userId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
+                          <Link href={isManager ? `/manager?facultyId=${f.userId}` : `/faculty?facultyId=${f.userId}`} className={cn(
+                            "grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-3 transition-colors text-left",
+                            selectedCohort === "March EduSkill" 
+                              ? "grid-cols-[40px_1fr_100px_40px]" 
+                              : "grid-cols-[40px_1fr_120px_40px]"
+                          )}>
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono text-fg-muted">{idx + 1}</span>
+                            
+                            <div className="flex items-center gap-3 min-w-0">
+                              <ColorAvatar name={f.name} />
+                              <div className="min-w-0">
+                                <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
+                                <span className="block text-[10px] text-fg-dim truncate">{f.email}</span>
+                              </div>
+                            </div>
 
-                        <div className="flex justify-end">
-                          <ArrowRight className="h-4 w-4 text-fg-muted hover:text-fg" />
-                        </div>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+                            {selectedCohort === "March EduSkill" ? (
+                              <span className="text-mono text-sm font-bold text-rose-400 text-right">{f.installs}</span>
+                            ) : (
+                              <span className="text-mono text-sm font-bold text-rose-400 text-right">
+                                {f.avgCombinedScore !== undefined ? f.avgCombinedScore.toFixed(1) : "—"}
+                              </span>
+                            )}
 
-              {bottomCount > 10 && (
-                <button onClick={() => setShowAllBottom(p => !p)}
-                  className="mt-3 w-full text-center text-[11px] font-medium text-fg-muted hover:text-fg transition-colors py-2 rounded-lg border border-border hover:border-border-strong cursor-pointer">
-                  {showAllBottom ? `Show less` : `Show all ${bottomCount} faculty`}
-                </button>
+                            <div className="flex justify-end">
+                              <ArrowRight className="h-4 w-4 text-fg-muted hover:text-fg" />
+                            </div>
+                          </Link>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+
+                  {bottomCount > 10 && (
+                    <button onClick={() => setShowAllBottom(p => !p)}
+                      className="mt-3 w-full text-center text-[11px] font-medium text-fg-muted hover:text-fg transition-colors py-2 rounded-lg border border-border hover:border-border-strong cursor-pointer">
+                      {showAllBottom ? `Show less` : `Show all ${bottomCount} faculty`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="videos"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          >
+            {/* Top 20 Videos */}
+            <div className="glass rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="text-sm font-semibold text-emerald-400">Top 20 Highest Rated Videos</h3>
+                </div>
+                <span className="text-[10px] rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5">
+                  {topVideos.length} rated videos
+                </span>
+              </div>
+
+              {topVideos.length === 0 ? (
+                <p className="text-xs text-fg-muted text-center py-8">No rated videos yet</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid gap-4 px-4 py-2 items-center text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold grid-cols-[40px_64px_1fr_100px_40px]">
+                    <span>Rank</span>
+                    <span>Thumb</span>
+                    <span>Video & Faculty</span>
+                    <span className="text-right">Score /25</span>
+                    <span className="text-right font-sans lowercase">view</span>
+                  </div>
+
+                  <AnimatePresence>
+                    {topVideos.map((v, i) => {
+                      const thumb = v.thumbnailUrl || youtubeThumb(v.youtubeUrl) || "";
+                      return (
+                        <motion.div key={v.videoId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
+                          <button
+                            onClick={() => setOpenVideoId(v.videoId)}
+                            className="w-full grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-2.5 transition-colors text-left grid-cols-[40px_64px_1fr_100px_40px] cursor-pointer"
+                          >
+                            <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono",
+                              i === 0 ? "bg-amber-500/15 text-amber-500 border border-amber-500/30" : i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
+                            )}>{i + 1}</span>
+                            
+                            <a
+                              href={v.youtubeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative aspect-video w-16 h-9 rounded bg-bg-elev overflow-hidden shrink-0 border border-border/50 hover:border-fg/20 transition-all group/thumb"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Watch on YouTube"
+                            >
+                              {thumb ? (
+                                <img
+                                  src={thumb}
+                                  alt=""
+                                  className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-bg-elev flex items-center justify-center">
+                                  <Play className="h-3 w-3 text-fg-dim" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                                <ExternalLink className="h-3.5 w-3.5 text-white" />
+                              </div>
+                            </a>
+
+                            <div className="min-w-0">
+                              <span className="block text-xs font-semibold text-fg/90 truncate">{v.title}</span>
+                              <span className="block text-[10px] text-fg-dim truncate">{v.facultyName || "Unknown Faculty"} · {v.subject}</span>
+                            </div>
+
+                            <span className="text-mono text-sm font-bold text-emerald-400 text-right">
+                              {v.managerScore !== null && v.managerScore !== undefined ? v.managerScore.toFixed(1) : "—"}
+                            </span>
+
+                            <div className="flex justify-end">
+                              <ArrowRight className="h-4 w-4 text-fg-muted" />
+                            </div>
+                          </button>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom 20 Videos */}
+            <div className="glass rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
+                  <h3 className="text-sm font-semibold text-rose-400">Bottom 20 Lowest Rated Videos</h3>
+                </div>
+                <span className="text-[10px] rounded-full border border-rose-500/25 bg-rose-500/10 text-rose-400 px-2.5 py-0.5">
+                  {bottomVideos.length} rated videos
+                </span>
+              </div>
+
+              {bottomVideos.length === 0 ? (
+                <p className="text-xs text-fg-muted text-center py-8">No rated videos yet</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid gap-4 px-4 py-2 items-center text-[10px] uppercase tracking-wider text-fg-dim font-mono font-bold grid-cols-[40px_64px_1fr_100px_40px]">
+                    <span>Rank</span>
+                    <span>Thumb</span>
+                    <span>Video & Faculty</span>
+                    <span className="text-right">Score /25</span>
+                    <span className="text-right font-sans lowercase">view</span>
+                  </div>
+
+                  <AnimatePresence>
+                    {bottomVideos.map((v, i) => {
+                      const thumb = v.thumbnailUrl || youtubeThumb(v.youtubeUrl) || "";
+                      return (
+                        <motion.div key={v.videoId} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
+                          <button
+                            onClick={() => setOpenVideoId(v.videoId)}
+                            className="w-full grid gap-4 items-center rounded-xl border border-border/60 bg-bg-elev/30 hover:border-border-strong hover:bg-bg-elev/60 px-4 py-2.5 transition-colors text-left grid-cols-[40px_64px_1fr_100px_40px] cursor-pointer"
+                          >
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-mono text-fg-muted">{i + 1}</span>
+                            
+                            <a
+                              href={v.youtubeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative aspect-video w-16 h-9 rounded bg-bg-elev overflow-hidden shrink-0 border border-border/50 hover:border-fg/20 transition-all group/thumb"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Watch on YouTube"
+                            >
+                              {thumb ? (
+                                <img
+                                  src={thumb}
+                                  alt=""
+                                  className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-bg-elev flex items-center justify-center">
+                                  <Play className="h-3 w-3 text-fg-dim" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                                <ExternalLink className="h-3.5 w-3.5 text-white" />
+                              </div>
+                            </a>
+
+                            <div className="min-w-0">
+                              <span className="block text-xs font-semibold text-fg/90 truncate">{v.title}</span>
+                              <span className="block text-[10px] text-fg-dim truncate">{v.facultyName || "Unknown Faculty"} · {v.subject}</span>
+                            </div>
+
+                            <span className="text-mono text-sm font-bold text-rose-400 text-right">
+                              {v.managerScore !== null && v.managerScore !== undefined ? v.managerScore.toFixed(1) : "—"}
+                            </span>
+
+                            <div className="flex justify-end">
+                              <ArrowRight className="h-4 w-4 text-fg-muted" />
+                            </div>
+                          </button>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Video Details Drawer */}
+      <VideoDrawer
+        videoId={openVideoId}
+        onClose={() => setOpenVideoId(null)}
+        managerMode={isManager}
+        managerId={user?.userId}
+        onRated={() => {
+          juneQ.refetch();
+          marchQ.refetch();
+        }}
+        hideScoring={!isManager}
+      />
     </div>
   );
 }
