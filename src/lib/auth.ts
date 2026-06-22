@@ -2,22 +2,25 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { JWTPayload } from "@/types";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-change-me"
-);
 const COOKIE_NAME = "fep_token";
 
 export async function signToken(payload: JWTPayload): Promise<string> {
+  const secretKey = new TextEncoder().encode(
+    process.env.JWT_SECRET || "dev-secret-change-me"
+  );
   return await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(SECRET);
+    .sign(secretKey);
 }
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const secretKey = new TextEncoder().encode(
+      process.env.JWT_SECRET || "dev-secret-change-me"
+    );
+    const { payload } = await jwtVerify(token, secretKey);
     const typed = payload as unknown as JWTPayload;
     if (typed && typed.role) {
       if (typed.role === "fep_faculty" as any) typed.role = "eduskill_faculty";

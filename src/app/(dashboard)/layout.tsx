@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { TopNav } from "@/components/TopNav";
 import { GlobalUploadFab } from "@/components/GlobalUploadFab";
+import MobileNavBar from "@/components/MobileNavBar";
 
 export default async function DashboardLayout({
   children,

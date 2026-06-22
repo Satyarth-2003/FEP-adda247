@@ -1,10 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-change-me"
-);
-
 const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/google", "/api/auth/me"];
 
 export default async function proxy(req: NextRequest) {
@@ -30,7 +26,10 @@ export default async function proxy(req: NextRequest) {
   }
 
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const secretKey = new TextEncoder().encode(
+      process.env.JWT_SECRET || "dev-secret-change-me"
+    );
+    const { payload } = await jwtVerify(token, secretKey);
     let role = payload.role as string;
     if (role === "fep_faculty") role = "eduskill_faculty";
     if (role === "fep_manager") role = "eduskill_manager";
@@ -53,7 +52,9 @@ export default async function proxy(req: NextRequest) {
       return NextResponse.redirect(url);
     }
     return NextResponse.next();
-  } catch {
+  } catch (err: any) {
+    console.error("JWT verification failed in proxy for token:", token);
+    console.error("JWT verification failed in proxy:", err.message || err);
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     const res = NextResponse.redirect(url);

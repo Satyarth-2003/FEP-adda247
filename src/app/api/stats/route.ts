@@ -284,8 +284,8 @@ function triggerSelfHealing(videos: Video[]) {
               TableName: TABLES.VIDEOS,
               Key: { facultyId: v.facultyId, videoId: v.videoId },
               UpdateExpression:
-                "SET duration = :dur, thumbnailUrl = :thumb, #views = :views, likes = :likes, #title = :title",
-              ExpressionAttributeNames: { "#views": "views", "#title": "title" },
+                "SET #dur = :dur, thumbnailUrl = :thumb, #views = :views, likes = :likes, #title = :title",
+              ExpressionAttributeNames: { "#dur": "duration", "#views": "views", "#title": "title" },
               ExpressionAttributeValues: {
                 ":dur": metadata.duration || v.duration || "",
                 ":thumb": metadata.thumbnailUrl || v.thumbnailUrl || "",

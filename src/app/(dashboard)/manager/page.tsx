@@ -1,5 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import MobileNavBar from "@/components/MobileNavBar";
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -367,7 +368,7 @@ export default function ManagerDashboard() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-2 no-scrollbar">
+          <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0 pr-1 space-y-2 no-scrollbar">
             {aggQ.isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
