@@ -17,7 +17,7 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ name: "", email: "", phone: "", role: "eduskill_faculty" as Role, subjects: "", teachingSubject: "", examTarget: "" });
+  const [draft, setDraft] = useState({ name: "", email: "", phone: "", role: "eduskill_faculty" as Role, subjects: "", teachingSubject: "", examTarget: "", cohort: "June EduSkill" });
 
   const usersQ = useQuery<{ users: User[] }>({
     queryKey: ["admin-users"],
@@ -27,7 +27,7 @@ export default function AdminDashboard() {
   const createMut = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       fetch("/api/admin/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(r => r.json()),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); setAdding(false); setDraft({ name: "", email: "", phone: "", role: "eduskill_faculty", subjects: "", teachingSubject: "", examTarget: "" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); setAdding(false); setDraft({ name: "", email: "", phone: "", role: "eduskill_faculty", subjects: "", teachingSubject: "", examTarget: "", cohort: "June EduSkill" }); },
   });
 
   const deleteMut = useMutation({
@@ -147,6 +147,8 @@ export default function AdminDashboard() {
               placeholder="Vertical (e.g. ssc, neet)" className="rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none" />
             <input value={draft.teachingSubject} onChange={e => setDraft(d => ({ ...d, teachingSubject: e.target.value }))}
               placeholder="Teaching Subject" className="rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none" />
+            <input value={draft.cohort} onChange={e => setDraft(d => ({ ...d, cohort: e.target.value }))}
+              placeholder="Cohort (e.g. June EduSkill)" className="rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none" />
           </div>
           <div className="flex gap-2 mt-4">
             <button

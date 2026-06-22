@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
 
-  const { name, email, phone, role, subjects, teachingSubject, examTarget } = await req.json();
+  const { name, email, phone, role, subjects, teachingSubject, examTarget, cohort } = await req.json();
   if (!name || !email || !role) {
     return NextResponse.json({ error: "name, email, role required" }, { status: 400 });
   }
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
     email: email.toLowerCase().trim(),
     phone: phone ?? undefined,
     role,
+    cohort: cohort || (role === "eduskill_faculty" ? "June EduSkill" : undefined),
     subjects: subjects ?? [],
     teachingSubject: teachingSubject ?? undefined,
     examTarget: examTarget ?? undefined,
