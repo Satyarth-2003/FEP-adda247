@@ -4,7 +4,7 @@ import { extractYouTubeId } from "@/lib/utils";
 import { ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
+const getApiKey = () => process.env.YOUTUBE_API_KEY ?? "";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ videoId: string }> }) {
   const user = await getCurrentUser();
@@ -33,7 +33,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ videoId: strin
 
   try {
     const ytRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${YT_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${getApiKey()}`
     );
     const ytData = await ytRes.json();
 

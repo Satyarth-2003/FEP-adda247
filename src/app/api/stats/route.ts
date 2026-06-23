@@ -13,7 +13,7 @@ import type { GradiAnalysis, ManagerRating, User, Video, JWTPayload } from "@/ty
 import { processPendingQueue } from "@/lib/gradi";
 import { extractYouTubeId } from "@/lib/utils";
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
+const getApiKey = () => process.env.YOUTUBE_API_KEY ?? "";
 
 function parseYTDuration(dur: string): string {
   if (!dur) return "";
@@ -57,7 +57,7 @@ async function fetchYouTubeVideoStatsBatch(ytIds: string[]): Promise<VideoStat[]
   if (ytIds.length === 0) return [];
   try {
     const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytIds.join(",")}&key=${YT_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytIds.join(",")}&key=${getApiKey()}`
     );
     if (!res.ok) return [];
     const data = await res.json();
@@ -78,7 +78,7 @@ async function fetchYouTubeChannelSubsBatch(channelIds: string[]) {
   if (channelIds.length === 0) return {};
   try {
     const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelIds.join(",")}&key=${YT_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelIds.join(",")}&key=${getApiKey()}`
     );
     if (!res.ok) return {};
     const data = await res.json();
@@ -212,7 +212,7 @@ async function fetchYouTubeMetadata(youtubeUrl: string) {
   if (!ytId) return null;
   try {
     const ytRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${YT_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${getApiKey()}`
     );
     if (!ytRes.ok) {
       let details = "";

@@ -169,14 +169,14 @@ export async function POST(req: Request) {
     }
   }
 }
-const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
+const getApiKey = () => process.env.YOUTUBE_API_KEY ?? "";
 
   async function fetchYouTubeMetadata(youtubeUrl: string) {
     const ytId = extractYouTubeId(youtubeUrl);
     if (!ytId) return null;
     try {
       const ytRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${YT_API_KEY}`
+        `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${getApiKey()}`
       );
       if (!ytRes.ok) {
         let details = "";
