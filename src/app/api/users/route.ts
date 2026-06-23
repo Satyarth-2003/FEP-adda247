@@ -4,13 +4,10 @@ import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import type { User } from "@/types";
 
-// GET — Manager: list all faculty (with subject filter)
+// GET — list all faculty (with subject filter)
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (user.role !== "eduskill_manager" && user.role !== "eduskill_admin") {
-    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  }
 
   const { searchParams } = new URL(req.url);
   const subjectId = searchParams.get("subjectId");

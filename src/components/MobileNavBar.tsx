@@ -35,6 +35,11 @@ export default function MobileNavBar() {
                 </Link>
               </li>
               <li>
+                <Link href="/archive" className="block py-1 hover:underline">
+                  Archive
+                </Link>
+              </li>
+              <li>
                 <Link href="/admin" className="block py-1 hover:underline">
                   Admin
                 </Link>
