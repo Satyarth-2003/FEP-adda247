@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { ScanCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { ddb, TABLES } from "@/lib/dynamodb";
 import { getCurrentUser } from "@/lib/auth";
 import type { User } from "@/types";
@@ -45,7 +45,18 @@ export async function PUT(req: Request) {
   // Faculty can only update themselves. Managers/admins can update anyone.
   const targetUserId = userId || user.userId;
   if (user.role === "eduskill_faculty" && targetUserId !== user.userId) {
-    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    // Check if the emails match as a fallback (handles stale JWT userIds for merged/reconciled accounts)
+    try {
+      const targetUserRes = await ddb.send(
+        new GetCommand({ TableName: TABLES.USERS, Key: { userId: targetUserId } })
+      );
+      const targetDbUser = targetUserRes.Item as User | undefined;
+      if (!targetDbUser || targetDbUser.email.toLowerCase().trim() !== user.email.toLowerCase().trim()) {
+        return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+      }
+    } catch (err) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
   }
 
   const { UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
@@ -76,16 +87,24 @@ export async function PUT(req: Request) {
     expressionAttributeValues[`:${key}`] = value;
   }
 
-  await ddb.send(
-    new UpdateCommand({
-      TableName: TABLES.USERS,
-      Key: { userId: targetUserId },
-      UpdateExpression: `SET ${updateParts.join(", ")}`,
-      ExpressionAttributeNames: expressionAttributeNames,
-      ExpressionAttributeValues: expressionAttributeValues,
-    })
-  );
+  try {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TABLES.USERS,
+        Key: { userId: targetUserId },
+        UpdateExpression: `SET ${updateParts.join(", ")}`,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+      })
+    );
 
-  return NextResponse.json({ success: true, message: "Profile updated successfully" });
+    return NextResponse.json({ success: true, message: "Profile updated successfully" });
+  } catch (error: any) {
+    console.error("Error updating profile in DynamoDB:", error);
+    return NextResponse.json(
+      { error: "Failed to update profile", details: error.message },
+      { status: 500 }
+    );
+  }
 }
 

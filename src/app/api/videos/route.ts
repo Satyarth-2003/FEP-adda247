@@ -179,7 +179,12 @@ const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
         `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytId}&key=${YT_API_KEY}`
       );
       if (!ytRes.ok) {
-        throw new Error(`YouTube API returned status ${ytRes.status}`);
+        let details = "";
+        try {
+          const errJson = await ytRes.json();
+          details = `: ${JSON.stringify(errJson.error?.message || errJson)}`;
+        } catch {}
+        throw new Error(`YouTube API returned status ${ytRes.status}${details}`);
       }
       const ytData = await ytRes.json();
       if (!ytData.items?.length) {

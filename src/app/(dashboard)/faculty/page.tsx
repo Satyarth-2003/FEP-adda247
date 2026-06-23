@@ -157,6 +157,9 @@ export default function FacultyDashboard() {
       if (res.ok) {
         statsQ.refetch();
         setIsEditingProfile(false);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(`Failed to save details: ${errData.error || "Unknown error"}${errData.details ? ` (${errData.details})` : ""}`);
       }
     } catch (err) {
       console.error(err);
