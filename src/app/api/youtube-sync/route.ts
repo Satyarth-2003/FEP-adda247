@@ -4,7 +4,7 @@ import { ddb, TABLES } from "@/lib/dynamodb";
 import { extractYouTubeId } from "@/lib/utils";
 import type { Video } from "@/types";
 
-const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "";
+const getApiKey = () => process.env.YOUTUBE_API_KEY ?? "";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -44,7 +44,7 @@ async function fetchYouTubeVideoStatsBatch(ytIds: string[]): Promise<VideoStat[]
   if (ytIds.length === 0) return [];
   try {
     const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytIds.join(",")}&key=${YT_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ytIds.join(",")}&key=${getApiKey()}`
     );
     if (!res.ok) return [];
     const data = await res.json();
@@ -65,7 +65,7 @@ async function fetchYouTubeChannelSubsBatch(channelIds: string[]): Promise<Recor
   if (channelIds.length === 0) return {};
   try {
     const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelIds.join(",")}&key=${YT_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelIds.join(",")}&key=${getApiKey()}`
     );
     if (!res.ok) return {};
     const data = await res.json();
