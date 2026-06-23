@@ -34,8 +34,10 @@ interface FacultyStats {
 function getWeekRange() {
   const now = new Date();
   const day = now.getDay();
-  const diffToMonday = now.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(now.setDate(diffToMonday));
+  const diff = day === 0 ? -6 : 1 - day;
+  
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
   monday.setHours(0, 0, 0, 0);
 
   const sunday = new Date(monday);

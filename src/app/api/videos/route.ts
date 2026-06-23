@@ -211,16 +211,44 @@ const getApiKey = () => process.env.YOUTUBE_API_KEY ?? "";
       };
     } catch (err) {
       console.error("fetchYouTubeMetadata error:", err);
-      // Fallback to oEmbed if YouTube API fails
+      // Fallback to oEmbed + watch page scraping if YouTube API fails
       try {
         const oembedRes = await fetch(
           `https://www.youtube.com/oembed?format=json&url=https://www.youtube.com/watch?v=${ytId}`
         );
         if (oembedRes.ok) {
           const oembedData = await oembedRes.json();
+          
+          let duration = "";
+          try {
+            const watchRes = await fetch(`https://www.youtube.com/watch?v=${ytId}`, {
+              headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+              }
+            });
+            if (watchRes.ok) {
+              const html = await watchRes.text();
+              const match = html.match(/"approxDurationMs"\s*:\s*"(\d+)"/);
+              if (match) {
+                const ms = Number(match[1]);
+                const totalSeconds = Math.floor(ms / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                const hStr = hours > 0 ? `${hours}:` : "";
+                const mStr = hours > 0 ? String(minutes).padStart(2, "0") : String(minutes);
+                const sStr = String(seconds).padStart(2, "0");
+                duration = `${hStr}${mStr}:${sStr}`;
+              }
+            }
+          } catch (scrapeErr) {
+            console.error("fetchYouTubeMetadata scrape duration error:", scrapeErr);
+          }
+
           return {
             title: oembedData.title || "",
-            duration: "",
+            duration,
             thumbnailUrl: oembedData.thumbnail_url || `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
             views: 0,
             likes: 0,
