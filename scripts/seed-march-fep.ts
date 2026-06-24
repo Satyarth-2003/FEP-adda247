@@ -26,16 +26,18 @@ const MARCH_EduSkill: MarchFaculty[] = [
   { name: "Ankita", email: "ankitas.selakoti@adda247.com", adjustToken: "21mflg6c", trackingLink: "https://adda247.go.link?adj_t=21mflg6c" },
   { name: "Renu", email: "renu.3@adda247.com", adjustToken: "217lvt3o", trackingLink: "https://adda247.go.link?adj_t=217lvt3o" },
   { name: "Abhishek", email: "abhishek.yadav1@adda247.com", adjustToken: "21qzb8i4", trackingLink: "https://adda247.go.link?adj_t=21qzb8i4" },
-  { name: "Saumya", email: "saumya.singh1@adda247.com", adjustToken: "21wcgnj1", trackingLink: "https://adda247.go.link?adj_t=21wcgnj1" },
+  { name: "Saumya", email: "saumya.singh1@adda247.com", adjustToken: "2154lczq", trackingLink: "https://studyiq.go.link?adj_t=2154lczq" },
   { name: "Sabhya", email: "sabhya.yadav@adda247.com", adjustToken: "21tex11g", trackingLink: "https://adda247.go.link?adj_t=21tex11g" },
   { name: "Preeti", email: "preeti.2@adda247.com", adjustToken: "21pvqo2g", trackingLink: "https://adda247.go.link?adj_t=21pvqo2g" },
   { name: "Shalvi", email: "shalvi.singh@adda247.com", adjustToken: "21lpzu9u", trackingLink: "https://adda247.go.link?adj_t=21lpzu9u" },
   { name: "Rohit", email: "rohit.oli@adda247.com", adjustToken: "211b1x2i", trackingLink: "https://adda247.go.link?adj_t=211b1x2i" },
   { name: "Tushar", email: "tushar.mehra@adda247.com", adjustToken: "214wbw7g", trackingLink: "https://adda247.go.link?adj_t=214wbw7g" },
-  { name: "Adiba", email: "adiba.shikhe@adda247.com", adjustToken: "21xm1ngc", trackingLink: "https://adda247.go.link?adj_t=21xm1ngc" },
+  { name: "Adiba", email: "adiba.shikhe@adda247.com", adjustToken: "21nh9caq", trackingLink: "https://studyiq.go.link?adj_t=21nh9caq" },
   { name: "Ravi", email: "ravi.singh@adda247.com", adjustToken: "21ibe7sq", trackingLink: "https://adda247.go.link?adj_t=21ibe7sq" },
   { name: "Fateh", email: "fateh.singh1@adda247.com", adjustToken: "21j8jufo", trackingLink: "https://adda247.go.link?adj_t=21j8jufo" },
   { name: "Vipin", email: "vipin.chandra@adda247.com", adjustToken: "21ehx8pf", trackingLink: "https://adda247.go.link?adj_t=21ehx8pf" },
+  { name: "Shahan", email: "shahan.malik@adda247.com", adjustToken: "21mjz2f8", trackingLink: "https://adda247.go.link?adj_t=21mjz2f8" },
+  { name: "Aayush Dubey", email: "aayush.dubey@adda247.com", adjustToken: "21eppd72", trackingLink: "https://adda247.go.link?adj_t=21eppd72" },
 ];
 
 async function emailExists(email: string): Promise<string | null> {
