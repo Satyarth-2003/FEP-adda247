@@ -687,33 +687,49 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
                       <div className="flex items-center gap-2 text-xs text-fg-muted">
                         <Loader2 className="h-3 w-3 animate-spin" /> Fetching YouTube analytics...
                       </div>
-                    ) : vStats ? (
-                      <div className="space-y-3">
-                        <p className="text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">YouTube Analytics</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          <div className="rounded-lg border border-border bg-bg p-3">
-                            <p className="text-[10px] uppercase tracking-wider text-fg-muted">Views</p>
-                            <p className="text-mono text-xl font-bold text-fg mt-1">{vStats.views.toLocaleString()}</p>
-                          </div>
-                          <div className="rounded-lg border border-border bg-bg p-3">
-                            <p className="text-[10px] uppercase tracking-wider text-fg-muted">Likes</p>
-                            <p className="text-mono text-xl font-bold text-fg mt-1">{vStats.likes.toLocaleString()}</p>
-                          </div>
-                          <div className="rounded-lg border border-border bg-bg p-3">
-                            <p className="text-[10px] uppercase tracking-wider text-fg-muted">Comments</p>
-                            <p className="text-mono text-xl font-bold text-fg mt-1">{vStats.comments.toLocaleString()}</p>
-                          </div>
-                          <div className="rounded-lg border border-border bg-bg p-3">
-                            <p className="text-[10px] uppercase tracking-wider text-fg-muted">Duration</p>
-                            <p className="text-mono text-xl font-bold text-fg mt-1">{vStats.duration || "—"}</p>
-                          </div>
+                    ) : (
+                      <div className="flex flex-col md:flex-row gap-4 items-start">
+                        {/* Zoomed fully visible thumbnail */}
+                        <div className="w-full md:w-56 shrink-0 aspect-video rounded-xl border border-border overflow-hidden bg-bg-elev shadow-md">
+                          <SafeThumbnail
+                            src={thumbUrl || undefined}
+                            alt=""
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            iconSize={20}
+                          />
                         </div>
-                        {vStats.publishedAt && (
-                          <p className="text-[10px] text-fg-dim">Published: {new Date(vStats.publishedAt).toLocaleDateString()}</p>
+
+                        {vStats ? (
+                          <div className="flex-1 space-y-3 w-full">
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">YouTube Analytics</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              <div className="rounded-lg border border-border bg-bg p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-fg-muted">Views</p>
+                                <p className="text-mono text-lg font-bold text-fg mt-0.5">{vStats.views.toLocaleString()}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-bg p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-fg-muted">Likes</p>
+                                <p className="text-mono text-lg font-bold text-fg mt-0.5">{vStats.likes.toLocaleString()}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-bg p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-fg-muted">Comments</p>
+                                <p className="text-mono text-lg font-bold text-fg mt-0.5">{vStats.comments.toLocaleString()}</p>
+                              </div>
+                              <div className="rounded-lg border border-border bg-bg p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-fg-muted">Duration</p>
+                                <p className="text-mono text-lg font-bold text-fg mt-0.5">{vStats.duration || "—"}</p>
+                              </div>
+                            </div>
+                            {vStats.publishedAt && (
+                              <p className="text-[10px] text-fg-dim">Published: {new Date(vStats.publishedAt).toLocaleDateString()}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex-1 py-4 text-xs text-fg-muted">
+                            Failed to load YouTube stats, but you can evaluate the thumbnail above.
+                          </div>
                         )}
                       </div>
-                    ) : (
-                      <p className="text-xs text-fg-muted">Failed to load analytics</p>
                     )}
                   </div>
                 </motion.div>
