@@ -570,7 +570,7 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
 
       <div className="rounded-xl border border-border overflow-hidden">
       {/* Table header */}
-      <div className="grid grid-cols-[44px_1fr_80px_70px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+      <div className="grid grid-cols-[88px_1fr_80px_70px_70px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
         <span></span>
         <span>Title</span>
         {/* <span className="text-center">Gradi /25</span> */}
@@ -591,10 +591,10 @@ function VideoTable({ videos, onSelect }: { videos: (Video & { analysis?: GradiA
         return (
           <div key={v.videoId}>
             <div
-              className="grid grid-cols-[44px_1fr_80px_70px_70px_60px] gap-2 px-4 py-2.5 border-b border-border hover:bg-bg-elev/30 transition-colors items-center"
+              className="grid grid-cols-[88px_1fr_80px_70px_70px_60px] gap-2 px-4 py-2.5 border-b border-border hover:bg-bg-elev/30 transition-colors items-center"
             >
               {/* Thumbnail */}
-              <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
+              <div className="w-20 h-14 rounded-md overflow-hidden bg-bg-elev flex-shrink-0">
                 <SafeThumbnail
                   src={thumbUrl || undefined}
                   alt=""
@@ -938,7 +938,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0 pr-1 no-scrollbar">
           <div className="glass rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-[44px_1fr_160px_100px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
+          <div className="grid grid-cols-[88px_1fr_160px_100px_60px] gap-2 px-4 py-2.5 bg-bg-elev/50 border-b border-border text-[10px] uppercase tracking-[0.15em] text-fg-muted font-medium">
             <span></span>
             <span>Video</span>
             <span>Faculty</span>
@@ -946,9 +946,9 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
             <span className="text-center">Score</span>
           </div>
           {filtered.map(v => (
-            <div key={v.videoId} className="grid grid-cols-[44px_1fr_160px_100px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
+            <div key={v.videoId} className="grid grid-cols-[88px_1fr_160px_100px_60px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center">
               {/* Thumbnail */}
-              <div className="w-10 h-7 rounded overflow-hidden bg-bg-elev flex-shrink-0">
+              <div className="w-20 h-14 rounded-md overflow-hidden bg-bg-elev flex-shrink-0">
                 <SafeThumbnail
                   src={v.thumbnailUrl}
                   alt=""
@@ -1483,15 +1483,15 @@ function MarchEduSkillDashboard() {
                   <p className="text-xs text-fg-muted text-center py-6">No videos uploaded yet.</p>
                 ) : (
                   <div className="border border-border rounded-xl overflow-hidden">
-                    <div className="grid grid-cols-[40px_1fr_120px_50px] gap-2 px-4 py-2 bg-bg-elev/50 border-b border-border text-[9px] uppercase tracking-wider font-semibold text-fg-muted">
+                    <div className="grid grid-cols-[80px_1fr_120px_50px] gap-2 px-4 py-2 bg-bg-elev/50 border-b border-border text-[9px] uppercase tracking-wider font-semibold text-fg-muted">
                       <span></span>
                       <span>Title</span>
                       <span>Date</span>
                       <span className="text-right">Delete</span>
                     </div>
                     {videos.map(v => (
-                      <div key={v.videoId} className="grid grid-cols-[40px_1fr_120px_50px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center cursor-pointer" onClick={() => setOpenVideoId(v.videoId)}>
-                        <div className="w-8 h-6 rounded overflow-hidden bg-bg-elev shrink-0">
+                      <div key={v.videoId} className="grid grid-cols-[80px_1fr_120px_50px] gap-2 px-4 py-2.5 border-b border-border/50 hover:bg-bg-elev/30 transition-colors items-center cursor-pointer" onClick={() => setOpenVideoId(v.videoId)}>
+                        <div className="w-16 h-12 rounded-md overflow-hidden bg-bg-elev shrink-0">
                           <SafeThumbnail
                             src={v.thumbnailUrl}
                             alt=""
