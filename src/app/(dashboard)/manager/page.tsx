@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import MobileNavBar from "@/components/MobileNavBar";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,7 +42,7 @@ interface FacultyStats {
   videos: (Video & { analysis?: GradiAnalysis | null })[];
 }
 
-export default function ManagerDashboard() {
+function ManagerDashboardContent() {
   const searchParams = useSearchParams();
   const urlFacultyId = searchParams ? searchParams.get("facultyId") : null;
   const [search, setSearch] = useState("");
@@ -1633,5 +1633,19 @@ function FacultyYTStats({ videos, facultyId }: { videos: (Video & { analysis?: G
         <p className="text-[9px] text-fg-dim text-right">YT stats synced {new Date(s.syncedAt).toLocaleTimeString()}</p>
       )}
     </div>
+  );
+}
+
+export default function ManagerDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-bg">
+          <Loader2 className="h-6 w-6 animate-spin text-fg-muted" />
+        </div>
+      }
+    >
+      <ManagerDashboardContent />
+    </Suspense>
   );
 }

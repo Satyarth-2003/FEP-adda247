@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Inbox, Sparkles, Loader2 } from "lucide-react";
 import { HeroStats } from "@/components/HeroStats";
@@ -61,7 +61,7 @@ function isAbove5Mins(duration?: string): boolean {
   return false;
 }
 
-export default function FacultyDashboard() {
+function FacultyDashboardContent() {
   const [activeSubject, setActiveSubject] = useState<string>("all");
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -543,5 +543,19 @@ function EmptyState() {
         Upload your first YouTube video to get an instant Gradi AI analysis.
       </p>
     </motion.div>
+  );
+}
+
+export default function FacultyDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-bg">
+          <Loader2 className="h-6 w-6 animate-spin text-fg-muted" />
+        </div>
+      }
+    >
+      <FacultyDashboardContent />
+    </Suspense>
   );
 }
