@@ -89,7 +89,7 @@ export function HeroStats({
               )}
             </div>
 
-            {ytStatsSyncedAt && (
+            {ytStatsSyncedAt && !isNaN(new Date(ytStatsSyncedAt).getTime()) && (
               <p className="mt-2 text-[10px] text-fg-dim">
                 YT stats synced {new Date(ytStatsSyncedAt).toLocaleTimeString()}
               </p>

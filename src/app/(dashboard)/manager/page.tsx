@@ -1629,7 +1629,7 @@ function FacultyYTStats({ videos, facultyId }: { videos: (Video & { analysis?: G
           </div>
         </div>
       </div>
-      {s?.syncedAt && (
+      {s?.syncedAt && !isNaN(new Date(s.syncedAt).getTime()) && (
         <p className="text-[9px] text-fg-dim text-right">YT stats synced {new Date(s.syncedAt).toLocaleTimeString()}</p>
       )}
     </div>
