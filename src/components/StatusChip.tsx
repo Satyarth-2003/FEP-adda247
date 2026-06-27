@@ -30,7 +30,7 @@ const meta: Record<
 };
 
 export function StatusChip({ status }: { status: VideoStatus }) {
-  const m = meta[status];
+  const m = meta[status] || meta.uploaded;
   return (
     <motion.span
       initial={{ opacity: 0, y: -2 }}
