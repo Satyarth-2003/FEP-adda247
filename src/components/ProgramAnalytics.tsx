@@ -361,10 +361,10 @@ export function ProgramAnalytics({ subjects }: { subjects: Subject[] }) {
 
       {/* Basic Stats Tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatTile icon={Video} label="Videos" value={stats.total} />
-        <StatTile icon={TrendingUp} label="Avg Manager Score" value={stats.avgManager.toFixed(2)} />
-        <StatTile icon={Activity} label="Manager Scored" value={`${stats.rated}/${stats.total}`} />
-        <StatTile icon={Users} label="Faculty" value={stats.faculties} />
+        <StatTile icon={Video} label="Videos" value={stats.total} color="from-sky-500/10 to-sky-600/5" border="border-sky-500/35" text="text-sky-700 dark:text-sky-400" labelText="text-sky-800/80 dark:text-sky-300/80" />
+        <StatTile icon={TrendingUp} label="Avg Manager Score" value={stats.avgManager.toFixed(2)} color="from-amber-500/10 to-amber-600/5" border="border-amber-500/35" text="text-amber-700 dark:text-amber-400" labelText="text-amber-800/80 dark:text-amber-300/80" />
+        <StatTile icon={Activity} label="Manager Scored" value={`${stats.rated}/${stats.total}`} color="from-emerald-500/10 to-emerald-600/5" border="border-emerald-500/35" text="text-emerald-700 dark:text-emerald-400" labelText="text-emerald-800/80 dark:text-emerald-300/80" />
+        <StatTile icon={Users} label="Faculty" value={stats.faculties} color="from-violet-500/10 to-violet-600/5" border="border-violet-500/35" text="text-violet-700 dark:text-violet-400" labelText="text-violet-800/80 dark:text-violet-300/80" />
       </div>
 
       {rows.length === 0 ? (
@@ -462,21 +462,25 @@ function FilterSelect({
 }
 
 function StatTile({
-  icon: Icon, label, value,
+  icon: Icon, label, value, color, border, text, labelText
 }: {
   icon: React.ElementType;
   label: string;
   value: number | string;
+  color?: string;
+  border?: string;
+  text?: string;
+  labelText?: string;
 }) {
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      className="glass rounded-xl p-4"
+      className={cn("rounded-xl border bg-gradient-to-br p-4 shadow-sm", color || "glass", border)}
     >
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-fg-muted">
-        <Icon className="h-3 w-3" />{label}
+      <div className={cn("flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-bold mb-1", labelText || "text-fg-muted")}>
+        <Icon className="h-3.5 w-3.5" />{label}
       </div>
-      <div className="mt-1.5 text-mono text-2xl font-bold tracking-tight">{value}</div>
+      <div className={cn("text-mono text-3xl font-black tracking-tight", text || "text-fg")}>{value}</div>
     </motion.div>
   );
 }

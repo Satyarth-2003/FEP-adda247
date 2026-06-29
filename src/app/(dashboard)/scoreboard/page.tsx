@@ -246,15 +246,15 @@ export default function ScoreboardPage() {
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
           className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total Trainees", value: totalTrainees, color: "from-violet-500/15 to-violet-600/5", border: "border-violet-500/20", text: "text-violet-300" },
-            { label: "Active Scorers", value: activeTrainees, color: "from-emerald-500/15 to-emerald-600/5", border: "border-emerald-500/20", text: "text-emerald-300" },
-            { label: "Top Score", value: topScore != null ? topScore.toFixed(1) : "—", color: "from-amber-500/15 to-amber-600/5", border: "border-amber-500/20", text: "text-amber-300" },
-            { label: "Average Score", value: avgFiltered, color: "from-blue-500/15 to-blue-600/5", border: "border-blue-500/20", text: "text-blue-300" },
+            { label: "Total Trainees", value: totalTrainees, color: "from-violet-500/10 to-violet-600/5", border: "border-violet-500/35", text: "text-violet-700 dark:text-violet-400", labelText: "text-violet-800/80 dark:text-violet-300/80" },
+            { label: "Active Scorers", value: activeTrainees, color: "from-emerald-500/10 to-emerald-600/5", border: "border-emerald-500/35", text: "text-emerald-700 dark:text-emerald-400", labelText: "text-emerald-800/80 dark:text-emerald-300/80" },
+            { label: "Top Score", value: topScore != null ? topScore.toFixed(1) : "—", color: "from-amber-500/10 to-amber-600/5", border: "border-amber-500/35", text: "text-amber-700 dark:text-amber-400", labelText: "text-amber-800/80 dark:text-amber-300/80" },
+            { label: "Average Score", value: avgFiltered, color: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/35", text: "text-blue-700 dark:text-blue-400", labelText: "text-blue-800/80 dark:text-blue-300/80" },
           ].map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className={cn("rounded-xl border bg-gradient-to-br p-4", s.color, s.border)}>
-              <p className="text-[10px] uppercase tracking-wider text-fg-muted font-medium mb-1">{s.label}</p>
-              <p className={cn("text-2xl font-bold tabular-nums", s.text)}>{s.value}</p>
+              className={cn("rounded-xl border bg-gradient-to-br p-4 shadow-sm", s.color, s.border)}>
+              <p className={cn("text-[9px] uppercase tracking-widest font-bold mb-1", s.labelText)}>{s.label}</p>
+              <p className={cn("text-3xl font-black tabular-nums tracking-tight", s.text)}>{s.value}</p>
             </motion.div>
           ))}
         </motion.div>
