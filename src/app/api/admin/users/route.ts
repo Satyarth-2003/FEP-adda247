@@ -62,6 +62,78 @@ export async function POST(req: Request) {
   return NextResponse.json({ user: safe });
 }
 
+// PUT — update a user's details (admin only)
+export async function PUT(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+
+  const body = await req.json();
+  const { userId, name, email, phone, role, subjects, teachingSubject, examTarget, cohort } = body;
+  if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+
+  // Find the user to get their partition key
+  const r = await ddb.send(
+    new ScanCommand({
+      TableName: TABLES.USERS,
+      FilterExpression: "userId = :u",
+      ExpressionAttributeValues: { ":u": userId },
+    })
+  );
+  const user = r.Items?.[0];
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  const validRoles: Role[] = ["eduskill_faculty", "eduskill_manager", "eduskill_admin"];
+  if (role && !validRoles.includes(role)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  }
+
+  // Construct update expression and attribute structures
+  const updateFields: Record<string, unknown> = {};
+  if (name !== undefined) updateFields.name = name;
+  if (email !== undefined) updateFields.email = email.toLowerCase().trim();
+  if (phone !== undefined) updateFields.phone = phone || undefined;
+  if (role !== undefined) updateFields.role = role;
+  if (subjects !== undefined) updateFields.subjects = subjects;
+  if (teachingSubject !== undefined) updateFields.teachingSubject = teachingSubject || undefined;
+  if (examTarget !== undefined) updateFields.examTarget = examTarget || undefined;
+  if (cohort !== undefined) updateFields.cohort = cohort || undefined;
+
+  if (Object.keys(updateFields).length === 0) {
+    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+  }
+
+  const { UpdateCommand } = await import("@aws-sdk/lib-dynamodb");
+  const updateParts: string[] = [];
+  const expressionAttributeNames: Record<string, string> = {};
+  const expressionAttributeValues: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(updateFields)) {
+    updateParts.push(`#${key} = :${key}`);
+    expressionAttributeNames[`#${key}`] = key;
+    expressionAttributeValues[`:${key}`] = value;
+  }
+
+  try {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TABLES.USERS,
+        Key: { userId },
+        UpdateExpression: `SET ${updateParts.join(", ")}`,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+      })
+    );
+
+    return NextResponse.json({ success: true, message: "User updated successfully" });
+  } catch (error: any) {
+    console.error("Error updating user in DynamoDB:", error);
+    return NextResponse.json(
+      { error: "Failed to update user", details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE — remove a user
 export async function DELETE(req: Request) {
   const admin = await requireAdmin();
@@ -86,3 +158,4 @@ export async function DELETE(req: Request) {
   );
   return NextResponse.json({ ok: true });
 }
+

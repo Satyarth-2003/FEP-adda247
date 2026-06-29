@@ -37,11 +37,11 @@ export default function AdminDashboard() {
   });
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState({ name: "", teachingSubject: "", cohort: "", subjects: "" });
+  const [editDraft, setEditDraft] = useState({ name: "", email: "", role: "eduskill_faculty" as Role, teachingSubject: "", cohort: "", subjects: "" });
 
   const updateMut = useMutation({
-    mutationFn: (data: { userId: string; name: string; subjects: string[]; teachingSubject?: string; cohort?: string }) =>
-      fetch("/api/users", {
+    mutationFn: (data: { userId: string; name: string; email: string; role: Role; subjects: string[]; teachingSubject?: string; cohort?: string }) =>
+      fetch("/api/admin/users", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
@@ -56,6 +56,8 @@ export default function AdminDashboard() {
     setEditingUserId(u.userId);
     setEditDraft({
       name: u.name || "",
+      email: u.email || "",
+      role: u.role || "eduskill_faculty",
       teachingSubject: u.teachingSubject || "",
       cohort: u.cohort || "",
       subjects: u.subjects ? u.subjects.join(", ") : "",
@@ -66,6 +68,8 @@ export default function AdminDashboard() {
     updateMut.mutate({
       userId,
       name: editDraft.name,
+      email: editDraft.email,
+      role: editDraft.role,
       teachingSubject: editDraft.teachingSubject || undefined,
       cohort: editDraft.cohort || undefined,
       subjects: editDraft.subjects ? editDraft.subjects.split(",").map(s => s.trim()).filter(Boolean) : [],
@@ -209,11 +213,34 @@ export default function AdminDashboard() {
                           u.name
                         )}
                       </td>
-                      <td className="px-3 py-2.5 text-fg-muted text-xs">{u.email}</td>
+                      <td className="px-3 py-2.5 text-fg-muted text-xs">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editDraft.email}
+                            onChange={e => setEditDraft(d => ({ ...d, email: e.target.value }))}
+                            className="rounded border border-border bg-bg px-2 py-1 text-xs w-full max-w-[200px] outline-none focus:border-fg/30"
+                          />
+                        ) : (
+                          u.email
+                        )}
+                      </td>
                       <td className="px-3 py-2.5">
-                        <span className={cn("rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider font-medium", r.color)}>
-                          {r.label}
-                        </span>
+                        {isEditing ? (
+                          <select
+                            value={editDraft.role}
+                            onChange={e => setEditDraft(d => ({ ...d, role: e.target.value as Role }))}
+                            className="rounded border border-border bg-bg px-2 py-1 text-xs outline-none focus:border-fg/30"
+                          >
+                            <option value="eduskill_faculty">Faculty</option>
+                            <option value="eduskill_manager">Manager</option>
+                            <option value="eduskill_admin">Admin</option>
+                          </select>
+                        ) : (
+                          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider font-medium", r.color)}>
+                            {r.label}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5 text-fg-muted text-xs">
                         {isEditing ? (
