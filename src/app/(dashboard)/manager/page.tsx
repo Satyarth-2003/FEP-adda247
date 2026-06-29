@@ -24,7 +24,7 @@ interface AggregateStats {
     email: string;
     subjects: string[];
     videoCount: number;
-    avgGradiScore: number;
+    netScore: number;
   }[];
   totalFaculty: number;
   totalVideos: number;
@@ -36,10 +36,10 @@ interface AggregateStats {
 interface FacultyStats {
   facultyId: string;
   totalVideos: number;
-  avgGradiScore: number;
+  netScore: number;
   pctRatedByManager: number;
-  bySubject: Record<string, { count: number; avgScore: number; videos: Video[] }>;
-  videos: (Video & { analysis?: GradiAnalysis | null })[];
+  bySubject: Record<string, { count: number; videos: Video[] }>;
+  videos: Video[];
 }
 
 function ManagerDashboardContent() {
@@ -747,7 +747,6 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
   const [ratingFilter, setRatingFilter] = useState<"unrated" | "rated" | "all">("unrated");
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
-  const [gradiFilter, setGradiFilter] = useState<"all" | "analyzed" | "pending">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "faculty" | "subject">("newest");
 
   // Fetch cohort faculty to filter videos
@@ -759,21 +758,23 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
     },
   });
 
-  const cohortFacultyIds = new Set((cohortQ.data?.faculty ?? []).map(f => f.userId));
-
-  const allVideosQ = useQuery({
-    queryKey: ["all-videos-june", cohort],
-    queryFn: async () => { const res = await fetch("/api/videos"); return res.json() as Promise<{ videos: Video[] }>; },
-    refetchInterval: 10000,
+  const videosQ = useQuery<{ videos: (Video & { managerRating?: any })[] }>({
+    queryKey: ["all-videos-raw"],
+    queryFn: () => fetch("/api/videos?scope=all").then(r => r.json()),
   });
 
-  const allVideos = useMemo(
-    () => (allVideosQ.data?.videos ?? []).filter(v => cohortFacultyIds.size === 0 || cohortFacultyIds.has(v.facultyId)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allVideosQ.data, cohortQ.data],
-  );
+  const subjectsQ = useQuery<{ subjects: Subject[] }>({
+    queryKey: ["subjects"],
+    queryFn: () => fetch("/api/subjects").then(r => r.json()),
+  });
 
-  // Derive unique subjects & faculty from queue videos
+  const allVideos = useMemo(() => {
+    const raw = videosQ.data?.videos ?? [];
+    const facultyIds = new Set(cohortQ.data?.faculty.map(f => f.userId) ?? []);
+    if (facultyIds.size === 0) return [];
+    return raw.filter(v => facultyIds.has(v.facultyId));
+  }, [videosQ.data, cohortQ.data]);
+
   const uniqueSubjects = useMemo(() => {
     const map = new Map<string, string>();
     allVideos.forEach(v => { if (v.subjectId && v.subject) map.set(v.subjectId, v.subject); });
@@ -794,8 +795,6 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
     });
     if (subjectFilter !== "all") list = list.filter(v => v.subjectId === subjectFilter);
     if (facultyFilter !== "all") list = list.filter(v => v.facultyId === facultyFilter);
-    if (gradiFilter === "analyzed") list = list.filter(v => v.status === "gradi_done" || v.status === "manager_rated");
-    if (gradiFilter === "pending")  list = list.filter(v => v.status === "uploaded" || v.status === "analyzing");
     return [...list].sort((a, b) => {
       if (sortBy === "newest")  return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
       if (sortBy === "oldest")  return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
@@ -803,11 +802,11 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
       if (sortBy === "subject") return (a.subject ?? "").localeCompare(b.subject ?? "");
       return 0;
     });
-  }, [allVideos, ratingFilter, subjectFilter, facultyFilter, gradiFilter, sortBy]);
+  }, [allVideos, ratingFilter, subjectFilter, facultyFilter, sortBy]);
 
   const unratedCount  = allVideos.filter(v => v.status !== "manager_rated").length;
   const ratedCount    = allVideos.filter(v => v.status === "manager_rated").length;
-  const hasActiveFilter = subjectFilter !== "all" || facultyFilter !== "all" || gradiFilter !== "all" || sortBy !== "newest";
+  const hasActiveFilter = subjectFilter !== "all" || facultyFilter !== "all" || sortBy !== "newest";
 
   return (
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col space-y-4">
@@ -822,7 +821,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
         </div>
         {hasActiveFilter && (
           <button
-            onClick={() => { setSubjectFilter("all"); setFacultyFilter("all"); setGradiFilter("all"); setSortBy("newest"); }}
+            onClick={() => { setSubjectFilter("all"); setFacultyFilter("all"); setSortBy("newest"); }}
             className="text-[11px] text-fg-muted border border-border rounded-full px-3 py-1 hover:text-fg hover:border-border-strong transition-colors"
           >
             ✕ Reset filters
@@ -929,7 +928,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
       </div>
 
       {/* Video list */}
-      {(allVideosQ.isLoading || cohortQ.isLoading) ? (
+      {(videosQ.isLoading || cohortQ.isLoading) ? (
         <div className="flex items-center justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-fg-muted" /></div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-bg-elev/30 py-12 text-center text-sm text-fg-muted">
@@ -992,7 +991,7 @@ function JuneRatingQueue({ openVideoId, setOpenVideoId, managerId, onRated, coho
         </div>
       )}
 
-      <VideoDrawer videoId={openVideoId} onClose={() => setOpenVideoId(null)} managerMode managerId={managerId} onRated={() => { onRated(); allVideosQ.refetch(); }} />
+      <VideoDrawer videoId={openVideoId} onClose={() => setOpenVideoId(null)} managerMode managerId={managerId} onRated={() => { onRated(); videosQ.refetch(); }} />
     </div>
   );
 }

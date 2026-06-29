@@ -9,8 +9,7 @@ interface LeaderRow {
   email: string;
   subjects: string[];
   videoCount: number;
-  avgGradiScore: number;
-  avgCombinedScore?: number;
+  netScore: number;
 }
 
 interface LeaderboardProps {
@@ -28,8 +27,9 @@ export function Leaderboard({
     <div className="space-y-2">
       <AnimatePresence>
         {rows.map((row, i) => {
-          const displayScore = row.avgCombinedScore !== undefined ? row.avgCombinedScore : row.avgGradiScore;
-          const color = scoreColor(displayScore / 5);
+          const displayScore = row.netScore !== undefined ? row.netScore : 0;
+          const avgScore = row.videoCount > 0 ? displayScore / row.videoCount : 0;
+          const color = scoreColor(avgScore / 5);
           const isSelected = selectedId === row.userId;
           return (
             <motion.button
@@ -95,7 +95,7 @@ export function Leaderboard({
                     {displayScore.toFixed(1)}
                   </span>
                   <span className="text-[9px] uppercase tracking-wider text-fg-dim">
-                    /25
+                    Score
                   </span>
                 </div>
                 <TrendingUp

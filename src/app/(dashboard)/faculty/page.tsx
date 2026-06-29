@@ -16,7 +16,7 @@ interface FacultyStats {
   facultyId: string;
   facultyName?: string;
   totalVideos: number;
-  avgGradiScore: number;
+  netScore: number;
   pctRatedByManager: number;
   age?: number;
   dob?: string;
@@ -27,8 +27,8 @@ interface FacultyStats {
   totalLikes?: number;
   subscribers?: number;
   ytStatsSyncedAt?: string | null;
-  bySubject: Record<string, { count: number; avgScore: number; videos: Video[] }>;
-  videos: (Video & { analysis?: GradiAnalysis | null })[];
+  bySubject: Record<string, { count: number; videos: Video[] }>;
+  videos: Video[];
 }
 
 function getWeekRange() {
@@ -236,7 +236,7 @@ function FacultyDashboardContent() {
       {user && (
         <HeroStats
           name={stats?.facultyName || user.name}
-          avgScore={stats?.avgGradiScore ?? 0}
+          netScore={stats?.netScore ?? 0}
           totalVideos={stats?.totalVideos ?? 0}
           pctRated={stats?.pctRatedByManager ?? 0}
           trendDelta={0}
@@ -540,7 +540,7 @@ function EmptyState() {
       <Inbox className="h-8 w-8 text-fg-dim mb-3" />
       <h3 className="text-base font-medium text-fg">No videos yet</h3>
       <p className="text-sm text-fg-muted mt-1 max-w-xs">
-        Upload your first YouTube video to get an instant Gradi AI analysis.
+        Upload your first YouTube video to start tracking your performance.
       </p>
     </motion.div>
   );

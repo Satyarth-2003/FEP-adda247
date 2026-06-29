@@ -11,7 +11,7 @@ function formatCount(n: number): string {
 
 interface HeroStatsProps {
   name: string;
-  avgScore: number;
+  netScore: number;
   totalVideos: number;
   pctRated: number;
   trendDelta?: number;
@@ -28,7 +28,7 @@ interface HeroStatsProps {
 
 export function HeroStats({
   name,
-  avgScore,
+  netScore,
   totalVideos,
   pctRated,
   trendDelta = 0,
@@ -51,9 +51,16 @@ export function HeroStats({
       className="glass-strong rounded-2xl p-6 md:p-8"
     >
       <div className="flex flex-col md:flex-row md:items-center gap-8">
-        {/* Score ring + name */}
+        {/* Score box + name */}
         <div className="flex items-center gap-6">
-          <ScoreRing score={avgScore} max={25} size={120} stroke={8} label="MANAGER AVG" />
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 px-6 py-5 text-center min-w-[120px] shadow-sm shrink-0">
+            <span className="text-mono text-3xl font-bold tracking-tight text-emerald-400">
+              {netScore.toFixed(1)}
+            </span>
+            <span className="text-[9px] uppercase tracking-[0.12em] font-semibold text-emerald-500 mt-1">
+              NET SCORE
+            </span>
+          </div>
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-fg-muted">
               Welcome

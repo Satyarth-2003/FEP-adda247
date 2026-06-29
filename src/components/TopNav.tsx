@@ -10,6 +10,7 @@ import {
   Shield,
   Trophy,
   ChevronDown,
+  LayoutList,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -61,6 +62,7 @@ export function TopNav({ userName, role }: TopNavProps) {
   const navItems = [
     { href: dashHref, label: "Dashboard", icon: LayoutDashboard },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+    { href: "/scoreboard", label: "Scoreboard", icon: LayoutList },
     { href: "/archive", label: "Archive", icon: Archive },
     ...(role === "eduskill_admin" ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];

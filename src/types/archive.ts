@@ -38,6 +38,7 @@ export interface ArchiveScoreRow {
   growth_w2_w3: string;
   growth_w3_w4: string;
   total: number | null;
+  attendPct?: string | null;
 }
 
 export interface ArchiveBestContent {

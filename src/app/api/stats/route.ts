@@ -440,7 +440,7 @@ export async function GET(req: Request) {
       subjects: facultyUser?.subjects || [],
       avatarUrl: facultyUser?.avatarUrl,
       totalVideos: 0,
-      avgGradiScore: 0,
+      netScore: 0,
       pctRatedByManager: 0,
       totalViews: 0,
       totalLikes: 0,
@@ -501,23 +501,6 @@ export async function GET(req: Request) {
     triggerBackgroundFacultyYTSync(facultyId, videos);
   }
 
-  // ── Gradi analyses ──────────────────────────────────────────────
-  const keys = filteredVideos.map((v) => ({ videoId: v.videoId }));
-  const analysisChunks: GradiAnalysis[] = [];
-  for (let i = 0; i < keys.length; i += 100) {
-    const chunk = keys.slice(i, i + 100);
-    const r = await ddb.send(
-      new BatchGetCommand({
-        RequestItems: { [TABLES.ANALYSES]: { Keys: chunk } },
-      })
-    );
-    analysisChunks.push(
-      ...((r.Responses?.[TABLES.ANALYSES] as GradiAnalysis[]) ?? [])
-    );
-  }
-
-  const analysisMap = new Map(analysisChunks.map((a) => [a.videoId, a]));
-
   // ── Fetch manager ratings for these videos ──────────────────────
   const ratings: ManagerRating[] = [];
   const videoIds = filteredVideos.map((v) => v.videoId);
@@ -554,26 +537,17 @@ export async function GET(req: Request) {
       return r ? r.total : null;
     })
     .filter((s): s is number => s !== null);
-  const avgManager =
-    managerScores.length > 0
-      ? managerScores.reduce((a, b) => a + b, 0) / managerScores.length
-      : 0;
+  const sumManager = managerScores.reduce((a, b) => a + b, 0);
 
   const bySubject: Record<
     string,
-    { count: number; avgScore: number; videos: Video[] }
+    { count: number; videos: Video[] }
   > = {};
   for (const v of filteredVideos) {
     const sid = v.subjectId || "unknown";
-    if (!bySubject[sid]) bySubject[sid] = { count: 0, avgScore: 0, videos: [] };
+    if (!bySubject[sid]) bySubject[sid] = { count: 0, videos: [] };
     bySubject[sid].count++;
     bySubject[sid].videos.push(v);
-    const a = analysisMap.get(v.videoId);
-    if (a?.gradiScore) {
-      const cur = bySubject[sid].avgScore;
-      const n = bySubject[sid].count;
-      bySubject[sid].avgScore = (cur * (n - 1) + a.gradiScore) / n;
-    }
   }
 
   return NextResponse.json({
@@ -589,7 +563,7 @@ export async function GET(req: Request) {
     subjects: facultyUser?.subjects || [],
     avatarUrl: facultyUser?.avatarUrl,
     totalVideos: filteredVideos.length,
-    avgGradiScore: Number(avgManager.toFixed(2)),
+    netScore: Number(sumManager.toFixed(2)),
     pctRatedByManager:
       filteredVideos.length > 0
         ? Math.round((ratedCount / filteredVideos.length) * 100)
@@ -605,7 +579,6 @@ export async function GET(req: Request) {
       const own = vRatings.find((r) => r.managerId === "shared") || vRatings[0];
       return {
         ...v,
-        analysis: analysisMap.get(v.videoId) ?? null,
         managerRating: own ?? null,
       };
     }),
@@ -659,26 +632,7 @@ async function aggregateAll(
 
   const videoIds = filteredVideos.map((v) => v.videoId);
 
-  // 3. BatchGet analyses for only the cohort's videos
-  const analyses: GradiAnalysis[] = [];
-  if (videoIds.length > 0) {
-    const keys = videoIds.map((id) => ({ videoId: id }));
-    for (let i = 0; i < keys.length; i += 100) {
-      const chunk = keys.slice(i, i + 100);
-      const res = await ddb.send(
-        new BatchGetCommand({
-          RequestItems: {
-            [TABLES.ANALYSES]: { Keys: chunk },
-          },
-        })
-      );
-      if (res.Responses?.[TABLES.ANALYSES]) {
-        analyses.push(...(res.Responses[TABLES.ANALYSES] as GradiAnalysis[]));
-      }
-    }
-  }
-
-  // 4. Query ratings for each video individually
+  // 3. Query ratings for each video individually
   const ratings: ManagerRating[] = [];
   if (videoIds.length > 0) {
     const ratingPromises = videoIds.map((vId) =>
@@ -698,7 +652,7 @@ async function aggregateAll(
     });
   }
 
-  // 5. BatchGet YT stats for the cohort's faculty
+  // 4. BatchGet YT stats for the cohort's faculty
   const ytStatsRows: YTStatsRow[] = [];
   if (facultyIds.length > 0) {
     const keys = facultyIds.map((id) => ({ facultyId: id }));
@@ -719,8 +673,6 @@ async function aggregateAll(
 
   processPendingQueue();
   triggerSelfHealing(videos);
-
-  const aMap = new Map(analyses.map((a) => [a.videoId, a]));
 
   // ── Build YT stats lookup by facultyId ─────────────────────────
   const ytMap = new Map<string, YTStatsRow>(
@@ -821,7 +773,6 @@ async function aggregateAll(
         likes: week === "all" ? (yt?.totalLikes ?? 0) : own.reduce((sum, v) => sum + (v.likes ?? 0), 0),
         subscribersGained: yt?.subscribers || 0,
         avatarUrl: u.avatarUrl,
-        avgGradiScore: 0,
         ytStatsSyncedAt: yt?.syncedAt ?? null,
       };
     });
@@ -839,11 +790,7 @@ async function aggregateAll(
         })
         .filter((s): s is number => s !== null);
 
-      const avgCombined =
-        managerScoresForUser.length > 0
-          ? managerScoresForUser.reduce((a, b) => a + b, 0) / managerScoresForUser.length
-          : 0;
-
+      const sumCombined = managerScoresForUser.reduce((a, b) => a + b, 0);
       const yt = ytMap.get(u.userId);
 
       return {
@@ -852,8 +799,7 @@ async function aggregateAll(
         email: u.email,
         subjects: u.subjects,
         videoCount: own.length,
-        avgGradiScore: Number(avgCombined.toFixed(2)),
-        avgCombinedScore: Number(avgCombined.toFixed(2)),
+        netScore: Number(sumCombined.toFixed(2)),
         totalViews: week === "all" ? (yt?.totalViews ?? 0) : own.reduce((sum, v) => sum + (v.views ?? 0), 0),
         totalLikes: week === "all" ? (yt?.totalLikes ?? 0) : own.reduce((sum, v) => sum + (v.likes ?? 0), 0),
         subscribers: yt?.subscribers ?? 0,
@@ -861,36 +807,12 @@ async function aggregateAll(
         avatarUrl: u.avatarUrl,
       };
     });
-    (leaderboard as { avgCombinedScore: number }[]).sort(
-      (a, b) => b.avgCombinedScore - a.avgCombinedScore
+    (leaderboard as { netScore: number }[]).sort(
+      (a, b) => b.netScore - a.netScore
     );
   }
 
-  // ── Per-subject radar aggregate ────────────────────────────────
-  const subjectAgg: Record<
-    string,
-    { keys: string[]; sums: number[]; n: number }
-  > = {};
-  const ratingKeys = [
-    "ratingClarity",
-    "ratingDepth",
-    "ratingStructure",
-    "ratingCommunication",
-    "ratingInteraction",
-    "ratingCommercial",
-  ] as const;
-  for (const v of filteredVideos) {
-    const a = aMap.get(v.videoId);
-    if (!a) continue;
-    const sid = v.subjectId || "unknown";
-    if (!subjectAgg[sid]) {
-      subjectAgg[sid] = { keys: [...ratingKeys], sums: [0, 0, 0, 0, 0, 0], n: 0 };
-    }
-    ratingKeys.forEach((k, i) => {
-      subjectAgg[sid].sums[i] += a[k] ?? 0;
-    });
-    subjectAgg[sid].n++;
-  }
+  const subjectAgg = {};
 
   const videosWithScores = filteredVideos.map((v) => {
     const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
@@ -905,7 +827,7 @@ async function aggregateAll(
     leaderboard,
     totalFaculty: users.length,
     totalVideos: filteredVideos.length,
-    totalAnalyses: analyses.length,
+    totalAnalyses: 0,
     totalRatings: ratings.length,
     subjectAgg,
     videos: videosWithScores,

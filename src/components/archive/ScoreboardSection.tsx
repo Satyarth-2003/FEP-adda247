@@ -16,6 +16,7 @@ type SortKey = "name" | "wk1" | "wk2" | "wk3" | "wk4" | "total";
 const BLANK: ArchiveScoreRow = {
   name: "", wk1: null, wk2: null, wk3: null, wk4: null,
   growth_w1_w2: "", growth_w2_w3: "", growth_w3_w4: "", total: null,
+  attendPct: "",
 };
 
 export function ScoreboardSection({ rows, weekHeaders, editMode, onUpdate }: Props) {
@@ -90,7 +91,7 @@ export function ScoreboardSection({ rows, weekHeaders, editMode, onUpdate }: Pro
           ) : (
             <div className="space-y-3">
               <p className="text-[11px] uppercase tracking-wider text-fg-muted font-medium">New trainee</p>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
                 <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
                   placeholder="Name *" className="w-full rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none sm:col-span-1" />
                 {(["wk1","wk2","wk3","wk4"] as const).map((k, i) => (
@@ -100,6 +101,8 @@ export function ScoreboardSection({ rows, weekHeaders, editMode, onUpdate }: Pro
                     placeholder={`Wk ${i+1}`}
                     className="w-full rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none" />
                 ))}
+                <input value={draft.attendPct ?? ""} onChange={e => setDraft(d => ({ ...d, attendPct: e.target.value }))}
+                  placeholder="Attend %" className="w-full rounded-lg border border-border bg-bg-elev px-3 py-2 text-sm text-fg outline-none" />
               </div>
               <div className="flex gap-2">
                 <button onClick={addRow} disabled={!draft.name.trim()}
@@ -125,7 +128,10 @@ export function ScoreboardSection({ rows, weekHeaders, editMode, onUpdate }: Pro
                 {(["wk1","wk2","wk3","wk4"] as const).map((k, i) => (
                   <SortTh key={k} label={weekHeaders[i]?.split("·")[0]?.trim() ?? `Wk ${i+1}`} k={k} sortKey={sortKey} asc={sortAsc} onClick={() => setSort(k)} align="right" />
                 ))}
-                <th className="text-center px-3 py-3 font-medium">Trend</th>
+                <th className="text-center px-3 py-3 font-medium">Wk1→2</th>
+                <th className="text-center px-3 py-3 font-medium">Wk2→3</th>
+                <th className="text-center px-3 py-3 font-medium">Wk3→4</th>
+                <th className="text-center px-3 py-3 font-medium">Attend %</th>
                 <SortTh label="Total" k="total" sortKey={sortKey} asc={sortAsc} onClick={() => setSort("total")} align="right" />
                 {editMode && <th className="px-3 py-3" />}
               </tr>
@@ -140,9 +146,10 @@ export function ScoreboardSection({ rows, weekHeaders, editMode, onUpdate }: Pro
                   {([r.wk1, r.wk2, r.wk3, r.wk4] as (number|null)[]).map((v, j) => (
                     <td key={j} className="px-3 py-2.5 text-right text-mono text-fg/85">{v ?? "—"}</td>
                   ))}
-                  <td className="px-3 py-2.5 text-center">
-                    <TrendIcons growths={[r.growth_w1_w2, r.growth_w2_w3, r.growth_w3_w4]} />
-                  </td>
+                  <GrowthCell value={r.growth_w1_w2} />
+                  <GrowthCell value={r.growth_w2_w3} />
+                  <GrowthCell value={r.growth_w3_w4} />
+                  <td className="px-3 py-2.5 text-center text-mono text-fg-muted">{r.attendPct ?? "—"}</td>
                   <td className="px-5 md:px-6 py-2.5 text-right text-mono font-semibold">{r.total ?? "—"}</td>
                   {editMode && (
                     <td className="px-3 py-2.5">
@@ -176,15 +183,16 @@ function SortTh({ label, k, sortKey, asc, onClick, align, className = "" }: {
   );
 }
 
-function TrendIcons({ growths }: { growths: string[] }) {
+function GrowthCell({ value }: { value: string }) {
+  if (!value || value === "—") return <td className="px-3 py-2.5 text-center text-fg-dim/60">—</td>;
+  
+  let colorClass = "text-fg-dim";
+  if (value.startsWith("▲")) colorClass = "text-emerald-500 font-medium";
+  else if (value.startsWith("▼")) colorClass = "text-rose-500 font-medium";
+  
   return (
-    <span className="inline-flex items-center gap-0.5">
-      {growths.map((g, i) => {
-        if (!g || g === "—") return <Minus key={i} className="h-3 w-3 text-fg-dim" />;
-        if (g.startsWith("▲")) return <ArrowUp key={i} className="h-3 w-3 text-emerald-500" />;
-        if (g.startsWith("▼")) return <ArrowDown key={i} className="h-3 w-3 text-rose-500" />;
-        return <Minus key={i} className="h-3 w-3 text-fg-dim" />;
-      })}
-    </span>
+    <td className={`px-3 py-2.5 text-center text-mono text-xs ${colorClass}`}>
+      {value}
+    </td>
   );
 }
