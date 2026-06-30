@@ -8,6 +8,7 @@ import {
   ChevronUp, ChevronDown, Trophy, Calendar, ArrowUpDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface FacultyLeaderRow {
@@ -17,6 +18,7 @@ interface FacultyLeaderRow {
 
 interface ScoreRow {
   rank: number;
+  userId: string;
   name: string;
   wk1: number | null; wk2: number | null;
   wk3: number | null; wk4: number | null;
@@ -55,13 +57,27 @@ export default function ScoreboardPage() {
   const [sortOption, setSortOption] = useState<"highest" | "lowest">("highest");
 
   // ── Queries ──────────────────────────────────────────────────────
+  const meQ = useQuery({
+    queryKey: ["me"],
+    queryFn: () => fetch("/api/auth/me").then(r => r.json()),
+  });
+  const user = meQ.data?.user;
+  const isManager = user?.role === "eduskill_manager" || user?.role === "eduskill_admin";
+
+  const getFacultyLink = (targetUserId: string) => {
+    if (isManager || targetUserId === user?.userId) {
+      return `/faculty?facultyId=${targetUserId}`;
+    }
+    return null;
+  };
+
   const juneQ = useQuery<{ leaderboard: FacultyLeaderRow[]; videos?: any[] }>({
     queryKey: ["leaderboard-june"],
     queryFn: () => fetch("/api/stats?scope=all&cohort=June+EduSkill").then(r => r.json()),
     staleTime: 60_000,
   });
 
-  const loading = juneQ.isLoading;
+  const loading = juneQ.isLoading || meQ.isLoading;
 
   // ── Resolve Date Range filter ──
   const filterRange = useMemo(() => {
@@ -120,6 +136,7 @@ export default function ScoreboardPage() {
       }
 
       return {
+        userId: f.userId,
         name: f.name,
         wk1, wk2, wk3, wk4,
         g12: delta(wk1, wk2),
@@ -362,22 +379,45 @@ export default function ScoreboardPage() {
                         {/* Trainee name */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
-                            <span
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm"
-                              style={{ background: avatarColor(row.name) }}
-                            >
-                              {row.name.charAt(0).toUpperCase()}
-                            </span>
-                            <div className="min-w-0">
-                              <span className="block text-[12px] font-semibold text-fg/90 truncate leading-tight">{row.name}</span>
-                              {/* Heat bar */}
-                              <div className="mt-1 h-1 w-full max-w-[100px] rounded-full bg-bg-elev overflow-hidden">
-                                <div
-                                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-500 transition-all duration-700"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                            </div>
+                            {getFacultyLink(row.userId) ? (
+                              <Link href={getFacultyLink(row.userId)!} className="flex items-center gap-2.5 hover:opacity-85">
+                                <span
+                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm transition-opacity"
+                                  style={{ background: avatarColor(row.name) }}
+                                >
+                                  {row.name.charAt(0).toUpperCase()}
+                                </span>
+                                <div className="min-w-0">
+                                  <span className="block text-[12px] font-semibold text-violet-400 hover:underline truncate leading-tight">{row.name}</span>
+                                  {/* Heat bar */}
+                                  <div className="mt-1 h-1 w-full max-w-[100px] rounded-full bg-bg-elev overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-500 transition-all duration-700"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </Link>
+                            ) : (
+                              <>
+                                <span
+                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm"
+                                  style={{ background: avatarColor(row.name) }}
+                                >
+                                  {row.name.charAt(0).toUpperCase()}
+                                </span>
+                                <div className="min-w-0">
+                                  <span className="block text-[12px] font-semibold text-fg/90 truncate leading-tight">{row.name}</span>
+                                  {/* Heat bar */}
+                                  <div className="mt-1 h-1 w-full max-w-[100px] rounded-full bg-bg-elev overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-500 transition-all duration-700"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </td>
 

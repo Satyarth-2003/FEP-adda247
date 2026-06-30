@@ -68,6 +68,13 @@ export default function LeaderboardPage() {
   const user = meQ.data?.user;
   const isManager = user?.role === "eduskill_manager" || user?.role === "eduskill_admin";
 
+  const getFacultyLink = (targetUserId: string) => {
+    if (isManager || targetUserId === user?.userId) {
+      return `/faculty?facultyId=${targetUserId}`;
+    }
+    return null;
+  };
+
   const marchQ = useQuery<{ leaderboard: FacultyLeaderRow[]; videos?: any[] }>({
     queryKey: ["leaderboard-march"],
     queryFn: () => fetch("/api/stats?scope=all&cohort=March+EduSkill").then(r => r.json()),
@@ -235,10 +242,19 @@ export default function LeaderboardPage() {
                                     "flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold",
                                     i === 0 ? "bg-amber-500/20 text-amber-400" : "text-fg-muted"
                                   )}>{i + 1}</span>
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <ColorAvatar name={f.name} />
-                                    <span className="text-[11px] font-medium text-fg truncate">{f.name}</span>
-                                  </div>
+                                  {getFacultyLink(f.userId) ? (
+                                    <Link href={getFacultyLink(f.userId)!} className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity">
+                                      <ColorAvatar name={f.name} />
+                                      <span className="text-[11px] font-medium text-violet-400 hover:underline truncate">
+                                        {f.name}
+                                      </span>
+                                    </Link>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <ColorAvatar name={f.name} />
+                                      <span className="text-[11px] font-medium text-fg truncate">{f.name}</span>
+                                    </div>
+                                  )}
                                   <span className="text-[12px] font-bold text-emerald-400 text-right tabular-nums">{f.score?.toFixed(1) ?? f.installs ?? "—"}</span>
                                 </div>
                               ))
@@ -287,10 +303,19 @@ export default function LeaderboardPage() {
                               (wk as any).bottom5.map((f: any, i: number) => (
                                 <div key={f.userId ?? f.name} className="grid grid-cols-[20px_1fr_50px] gap-2 items-center px-3 py-2 hover:bg-bg-elev/40 transition-colors">
                                   <span className="text-[9px] font-bold text-fg-muted text-center">{i + 1}</span>
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <ColorAvatar name={f.name} />
-                                    <span className="text-[11px] font-medium text-fg truncate">{f.name}</span>
-                                  </div>
+                                  {getFacultyLink(f.userId) ? (
+                                    <Link href={getFacultyLink(f.userId)!} className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity">
+                                      <ColorAvatar name={f.name} />
+                                      <span className="text-[11px] font-medium text-violet-400 hover:underline truncate">
+                                        {f.name}
+                                      </span>
+                                    </Link>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <ColorAvatar name={f.name} />
+                                      <span className="text-[11px] font-medium text-fg truncate">{f.name}</span>
+                                    </div>
+                                  )}
                                   <span className="text-[12px] font-bold text-rose-400 text-right tabular-nums">{f.score?.toFixed(1) ?? f.installs ?? "—"}</span>
                                 </div>
                               ))
@@ -321,28 +346,48 @@ export default function LeaderboardPage() {
                     <span className="text-right">{selectedCohort === "March EduSkill" ? "Installs" : "Net Score"}</span>
                     <span className="text-right">→</span>
                   </div>
-                  {list.map((f, i) => (
-                    <Link
-                      key={f.userId}
-                      href={isManager ? `/manager?facultyId=${f.userId}` : `/faculty?facultyId=${f.userId}`}
-                      className="grid grid-cols-[32px_1fr_90px_36px] gap-3 items-center rounded-xl border border-border/40 bg-bg-elev/20 hover:border-border-strong hover:bg-bg-elev/50 px-3 py-2.5 transition-colors"
-                    >
-                      <span className={cn("flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold tabular-nums",
-                        i === 0 ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" : i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
-                      )}>{i + 1}</span>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <ColorAvatar name={f.name} />
-                        <div className="min-w-0">
-                          <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
-                          <span className="block text-[9px] text-fg-dim truncate">{f.email}</span>
+                  {list.map((f, i) => {
+                    const targetLink = getFacultyLink(f.userId);
+                    const content = (
+                      <>
+                        <span className={cn("flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold tabular-nums",
+                          i === 0 ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" : i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
+                        )}>{i + 1}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <ColorAvatar name={f.name} />
+                          <div className="min-w-0">
+                            <span className="block text-xs font-semibold text-fg/90 truncate">{f.name}</span>
+                            <span className="block text-[9px] text-fg-dim truncate">{f.email}</span>
+                          </div>
                         </div>
+                        <span className="text-mono text-sm font-bold text-emerald-400 text-right tabular-nums">
+                          {selectedCohort === "March EduSkill" ? (f.installs ?? "—") : (f.netScore !== undefined ? f.netScore.toFixed(1) : "—")}
+                        </span>
+                        <span className="text-fg-dim text-right text-xs">›</span>
+                      </>
+                    );
+                    
+                    if (targetLink) {
+                      return (
+                        <Link
+                          key={f.userId}
+                          href={targetLink}
+                          className="grid grid-cols-[32px_1fr_90px_36px] gap-3 items-center rounded-xl border border-border/40 bg-bg-elev/20 hover:border-border-strong hover:bg-bg-elev/50 px-3 py-2.5 transition-colors"
+                        >
+                          {content}
+                        </Link>
+                      );
+                    }
+                    
+                    return (
+                      <div
+                        key={f.userId}
+                        className="grid grid-cols-[32px_1fr_90px_36px] gap-3 items-center rounded-xl border border-border/40 bg-bg-elev/20 px-3 py-2.5"
+                      >
+                        {content}
                       </div>
-                      <span className="text-mono text-sm font-bold text-emerald-400 text-right tabular-nums">
-                        {selectedCohort === "March EduSkill" ? (f.installs ?? "—") : (f.netScore !== undefined ? f.netScore.toFixed(1) : "—")}
-                      </span>
-                      <span className="text-fg-dim text-right text-xs">›</span>
-                    </Link>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
