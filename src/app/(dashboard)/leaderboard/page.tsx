@@ -59,6 +59,7 @@ function ColorAvatar({ name }: { name: string }) {
 export default function LeaderboardPage() {
   const [selectedCohort, setSelectedCohort] = useState<"June EduSkill" | "March EduSkill">("June EduSkill");
   const [selectedTab, setSelectedTab] = useState<string>("leaderboard");
+  const [viewMode, setViewMode] = useState<"summary" | "full">("summary");
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
 
   const meQ = useQuery({
@@ -121,6 +122,7 @@ export default function LeaderboardPage() {
         ...wk,
         top5: scored.slice(0, 5),
         bottom5: scored.length >= 5 ? [...scored].reverse().slice(0, 5).reverse() : [],
+        fullList: scored
       };
     });
   }, [juneQ.data, list]);
@@ -174,17 +176,42 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
-      {/* Navigation tabs */}
-      <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-2 border-b border-border/40">
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setSelectedTab(t.key)}
-            className={cn("relative px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors isolate cursor-pointer",
-              selectedTab === t.key ? "text-white" : "text-fg-muted hover:text-fg border border-border")}
-          >
-            {selectedTab === t.key && <motion.span layoutId="lb-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
-            {t.label}
-          </button>
-        ))}
+      {/* Navigation tabs & View mode toggle */}
+      <div className="flex items-center justify-between mb-6 border-b border-border/40 pb-2 flex-wrap gap-4">
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {tabs.map(t => (
+            <button key={t.key} onClick={() => setSelectedTab(t.key)}
+              className={cn("relative px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors isolate cursor-pointer",
+                selectedTab === t.key ? "text-white" : "text-fg-muted hover:text-fg border border-border")}
+            >
+              {selectedTab === t.key && <motion.span layoutId="lb-pill" className="absolute inset-0 rounded-full bg-emerald-600 -z-10" transition={{ duration: 0.2 }} />}
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {selectedTab === "leaderboard" && selectedCohort === "June EduSkill" && (
+          <div className="flex items-center gap-1 rounded-xl border border-border bg-bg-elev/40 p-1">
+            <button
+              onClick={() => setViewMode("summary")}
+              className={cn(
+                "rounded-lg px-3 py-1 text-[11px] font-semibold transition-all cursor-pointer",
+                viewMode === "summary" ? "bg-fg text-bg shadow-sm" : "text-fg-muted hover:text-fg"
+              )}
+            >
+              Top &amp; Bottom 5
+            </button>
+            <button
+              onClick={() => setViewMode("full")}
+              className={cn(
+                "rounded-lg px-3 py-1 text-[11px] font-semibold transition-all cursor-pointer",
+                viewMode === "full" ? "bg-fg text-bg shadow-sm" : "text-fg-muted hover:text-fg"
+              )}
+            >
+              Complete Rankings
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
@@ -200,7 +227,8 @@ export default function LeaderboardPage() {
             className="space-y-6"
           >
             {/* TOP 5 PERFORMERS */}
-            {selectedCohort === "June EduSkill" && (
+            {/* TOP & BOTTOM 5 SUMMARY VIEW */}
+            {selectedCohort === "June EduSkill" && viewMode === "summary" && (
               <>
                 <div>
                   <div className="flex items-center gap-2 mb-3">
@@ -329,6 +357,76 @@ export default function LeaderboardPage() {
                   </div>
                 </div>
               </>
+            )}
+
+            {/* COMPLETE WEEK-WISE RANKINGS VIEW */}
+            {selectedCohort === "June EduSkill" && viewMode === "full" && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-violet-500 animate-pulse" />
+                  <h2 className="text-sm font-bold text-violet-400 uppercase tracking-wider">Complete Week-wise Rankings</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                  {juneWeekData.map((wk, wi) => {
+                    const col = WEEK_COLORS[wi];
+                    return (
+                      <motion.div
+                        key={wi}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: wi * 0.05 }}
+                        className={cn("rounded-2xl border overflow-hidden", col.border)}
+                      >
+                        {/* Week header */}
+                        <div className={cn("px-4 py-2.5", col.bg)}>
+                          <div className="flex items-center justify-between">
+                            <span className={cn("text-xs font-bold", col.text)}>{wk.label}</span>
+                            <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full", col.text, col.pill)}>{wk.range}</span>
+                          </div>
+                        </div>
+
+                        {/* Column headers */}
+                        <div className="grid grid-cols-[24px_1fr_50px] gap-2 px-3 py-1.5 bg-bg-elev/60 border-b border-border/30">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-fg-dim">#</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-fg-dim">Name</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-fg-dim text-right">Score</span>
+                        </div>
+
+                        {/* Scrollable list */}
+                        <div className="divide-y divide-border/20 max-h-[500px] overflow-y-auto pr-1">
+                          {wk.fullList && wk.fullList.length > 0 ? (
+                            wk.fullList.map((f: any, i: number) => (
+                              <div key={f.userId ?? f.name} className="grid grid-cols-[24px_1fr_50px] gap-2 items-center px-3 py-2 hover:bg-bg-elev/40 transition-colors">
+                                <span className={cn(
+                                  "flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold",
+                                  i === 0 ? "bg-amber-500/20 text-amber-400" :
+                                  i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
+                                )}>{i + 1}</span>
+                                {getFacultyLink(f.userId) ? (
+                                  <Link href={getFacultyLink(f.userId)!} className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity">
+                                    <ColorAvatar name={f.name} />
+                                    <span className="text-[11px] font-medium text-violet-400 hover:underline truncate">
+                                      {f.name}
+                                    </span>
+                                  </Link>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <ColorAvatar name={f.name} />
+                                    <span className="text-[11px] font-medium text-fg truncate">{f.name}</span>
+                                  </div>
+                                )}
+                                <span className="text-[12px] font-bold text-emerald-400 text-right tabular-nums">{f.score?.toFixed(1) ?? "—"}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-3 py-6 text-center text-[11px] text-fg-dim">No data yet</div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             {/* Full faculty list (collapsed summary) */}
