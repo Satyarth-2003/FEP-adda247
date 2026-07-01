@@ -31,7 +31,7 @@ function computeJuneCohortNetScore(videos: Video[], ratings: ManagerRating[]): n
   ];
 
   let totalScore = 0;
-  for (const wk of JUNE_WEEKS) {
+  JUNE_WEEKS.forEach((wk, wi) => {
     const wkVids = videos.filter(v => {
       if (!v.uploadedAt) return false;
       const d = new Date(v.uploadedAt);
@@ -43,9 +43,10 @@ function computeJuneCohortNetScore(videos: Video[], ratings: ManagerRating[]): n
       .filter((s): s is number => s !== undefined && s !== null);
 
     wkScores.sort((a, b) => b - a);
-    const top3Sum = wkScores.slice(0, 3).reduce((sum, s) => sum + s, 0);
-    totalScore += top3Sum;
-  }
+    const limit = wi === 0 ? 1 : 3;
+    const topSum = wkScores.slice(0, limit).reduce((sum, s) => sum + s, 0);
+    totalScore += topSum;
+  });
   return Number(totalScore.toFixed(2));
 }
 

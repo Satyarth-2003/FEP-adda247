@@ -105,20 +105,20 @@ export default function ScoreboardPage() {
         v.facultyId === f.userId && v.managerScore != null
       );
       
-      const weekScore = (s: Date, e: Date) => {
+      const weekScore = (s: Date, e: Date, limit: number) => {
         const vs = own.filter((v: any) => {
           const d = v.uploadedAt ? new Date(v.uploadedAt) : null;
           return d && d >= s && d <= e;
         });
         const scores = vs.map((v: any) => v.managerScore).filter((v): v is number => v != null);
         scores.sort((a, b) => b - a);
-        return scores.length ? scores.slice(0, 3).reduce((acc: number, v: any) => acc + v, 0) : null;
+        return scores.length ? scores.slice(0, limit).reduce((acc: number, v: any) => acc + v, 0) : null;
       };
 
-      const wk1 = weekScore(JUNE_WEEKS[0].start, JUNE_WEEKS[0].end);
-      const wk2 = weekScore(JUNE_WEEKS[1].start, JUNE_WEEKS[1].end);
-      const wk3 = weekScore(JUNE_WEEKS[2].start, JUNE_WEEKS[2].end);
-      const wk4 = weekScore(JUNE_WEEKS[3].start, JUNE_WEEKS[3].end);
+      const wk1 = weekScore(JUNE_WEEKS[0].start, JUNE_WEEKS[0].end, 1);
+      const wk2 = weekScore(JUNE_WEEKS[1].start, JUNE_WEEKS[1].end, 3);
+      const wk3 = weekScore(JUNE_WEEKS[2].start, JUNE_WEEKS[2].end, 3);
+      const wk4 = weekScore(JUNE_WEEKS[3].start, JUNE_WEEKS[3].end, 3);
       const scores = [wk1, wk2, wk3, wk4].filter((v): v is number => v != null);
       const total = scores.length ? scores.reduce((a, b) => a + b, 0) : null;
 
@@ -129,7 +129,7 @@ export default function ScoreboardPage() {
       } else {
         let sum = 0;
         let hasScoredWeek = false;
-        for (const wk of JUNE_WEEKS) {
+        JUNE_WEEKS.forEach((wk, wi) => {
           const wkMatchingVids = own.filter((v: any) => {
             const d = v.uploadedAt ? new Date(v.uploadedAt) : null;
             if (!d) return false;
@@ -143,9 +143,10 @@ export default function ScoreboardPage() {
             hasScoredWeek = true;
             const wkScores = wkMatchingVids.map((v: any) => v.managerScore).filter((s): s is number => s != null);
             wkScores.sort((a, b) => b - a);
-            sum += wkScores.slice(0, 3).reduce((acc, s) => acc + s, 0);
+            const limit = wi === 0 ? 1 : 3;
+            sum += wkScores.slice(0, limit).reduce((acc, s) => acc + s, 0);
           }
-        }
+        });
         filteredScore = hasScoredWeek ? sum : null;
       }
 

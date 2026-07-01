@@ -115,7 +115,8 @@ export default function LeaderboardPage() {
         );
         const scores = own.map((v: any) => v.managerScore).filter((s): s is number => s !== null);
         scores.sort((a, b) => b - a);
-        const score = scores.length > 0 ? scores.slice(0, 3).reduce((sum, s) => sum + s, 0) : null;
+        const limit = wi === 0 ? 1 : 3;
+        const score = scores.length > 0 ? scores.slice(0, limit).reduce((sum, s) => sum + s, 0) : null;
         return { userId: f.userId, name: f.name, score };
       }).filter(x => x.score !== null) as { userId: string; name: string; score: number }[];
 
