@@ -35,6 +35,13 @@ const JUNE_WEEKS = [
   { label: "Week 4", range: "29 Jun · 05 Jul", start: new Date("2026-06-29T00:00:00Z"), end: new Date("2026-07-05T23:59:59Z") },
 ];
 
+const WEEK_COLORS = [
+  { text: "text-violet-400", border: "border-violet-500/25", bg: "bg-violet-500/5", pill: "bg-violet-500/10", icon: "text-violet-400" },
+  { text: "text-emerald-400", border: "border-emerald-500/25", bg: "bg-emerald-500/5", pill: "bg-emerald-500/10", icon: "text-emerald-400" },
+  { text: "text-blue-400", border: "border-blue-500/25", bg: "bg-blue-500/5", pill: "bg-blue-500/10", icon: "text-blue-400" },
+  { text: "text-pink-400", border: "border-pink-500/25", bg: "bg-pink-500/5", pill: "bg-pink-500/10", icon: "text-pink-400" },
+];
+
 const AVATAR_COLORS = ["#6366f1","#8b5cf6","#ec4899","#14b8a6","#f97316","#3b82f6","#10b981","#f59e0b","#ef4444","#84cc16"];
 function avatarColor(name: string) {
   let h = 0;
@@ -55,6 +62,7 @@ export default function ScoreboardPage() {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [sortOption, setSortOption] = useState<"highest" | "lowest">("highest");
+  const [viewMode, setViewMode] = useState<"table" | "weekly">("table");
 
   // ── Queries ──────────────────────────────────────────────────────
   const meQ = useQuery({
@@ -78,6 +86,33 @@ export default function ScoreboardPage() {
   });
 
   const loading = juneQ.isLoading || meQ.isLoading;
+
+  // ── June week-wise per-faculty scores for full list ──────────────
+  const juneWeekData = useMemo(() => {
+    const list = juneQ.data?.leaderboard ?? [];
+    const videos = juneQ.data?.videos ?? [];
+
+    return JUNE_WEEKS.map((wk, wi) => {
+      const scored = list.map(f => {
+        const own = videos.filter((v: any) =>
+          v.facultyId === f.userId &&
+          v.managerScore !== null && v.managerScore !== undefined &&
+          v.uploadedAt && new Date(v.uploadedAt) >= wk.start && new Date(v.uploadedAt) <= wk.end
+        );
+        const scores = own.map((v: any) => v.managerScore).filter((s): s is number => s !== null);
+        scores.sort((a, b) => b - a);
+        const limit = wi === 0 ? 1 : 3;
+        const score = scores.length > 0 ? scores.slice(0, limit).reduce((sum, s) => sum + s, 0) : null;
+        return { userId: f.userId, name: f.name, score };
+      }).filter(x => x.score !== null) as { userId: string; name: string; score: number }[];
+
+      scored.sort((a, b) => b.score - a.score);
+      return {
+        ...wk,
+        fullList: scored
+      };
+    });
+  }, [juneQ.data]);
 
   // ── Resolve Date Range filter ──
   const filterRange = useMemo(() => {
@@ -297,15 +332,42 @@ export default function ScoreboardPage() {
         className="glass rounded-2xl overflow-hidden">
 
         {/* Card toolbar */}
-        <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border/40">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
-            <span className="text-sm font-semibold text-fg/90">
-              {timeFilter === "all" ? "All-Time Scores" : `${timeFilter.toUpperCase()} Scores`}
-            </span>
+        <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border/40 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
+              <span className="text-sm font-semibold text-fg/90">
+                {viewMode === "table" 
+                  ? (timeFilter === "all" ? "All-Time Scores" : `${timeFilter.toUpperCase()} Scores`)
+                  : "Complete Weekly Rankings"
+                }
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-1 rounded-xl border border-border bg-bg-elev/40 p-1">
+              <button
+                onClick={() => setViewMode("table")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-all cursor-pointer",
+                  viewMode === "table" ? "bg-fg text-bg shadow-sm" : "text-fg-muted hover:text-fg"
+                )}
+              >
+                Growth Table
+              </button>
+              <button
+                onClick={() => setViewMode("weekly")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-all cursor-pointer",
+                  viewMode === "weekly" ? "bg-fg text-bg shadow-sm" : "text-fg-muted hover:text-fg"
+                )}
+              >
+                Weekly Rankings
+              </button>
+            </div>
           </div>
+          
           <span className="text-[10px] rounded-full border border-border bg-bg-elev px-2.5 py-0.5 text-fg-muted">
-            {filteredRows.length} / {allRows.length} trainees
+            {viewMode === "table" ? `${filteredRows.length} / ${allRows.length} trainees` : "4 Cohort Weeks"}
           </span>
         </div>
 
@@ -318,7 +380,7 @@ export default function ScoreboardPage() {
             <LayoutList className="h-8 w-8 text-fg-dim/40" />
             <p className="text-sm text-fg-muted">No scoreboard data available yet.</p>
           </div>
-        ) : (
+        ) : viewMode === "table" ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[780px]">
               <thead>
@@ -486,6 +548,79 @@ export default function ScoreboardPage() {
                 </AnimatePresence>
               </tbody>
             </table>
+          </div>
+        ) : (
+          <div className="p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              {juneWeekData.map((wk, wi) => {
+                const col = WEEK_COLORS[wi];
+                return (
+                  <motion.div
+                    key={wi}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: wi * 0.05 }}
+                    className={cn("rounded-2xl border overflow-hidden bg-bg-elev/5", col.border)}
+                  >
+                    {/* Week header */}
+                    <div className={cn("px-4 py-2.5", col.bg)}>
+                      <div className="flex items-center justify-between">
+                        <span className={cn("text-xs font-bold", col.text)}>{wk.label}</span>
+                        <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full", col.text, col.pill)}>{wk.range}</span>
+                      </div>
+                    </div>
+
+                    {/* Column headers */}
+                    <div className="grid grid-cols-[24px_1fr_50px] gap-2 px-3 py-1.5 bg-bg-elev/60 border-b border-border/30">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-fg-dim">#</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-fg-dim">Name</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-fg-dim text-right">Score</span>
+                    </div>
+
+                    {/* Scrollable list */}
+                    <div className="divide-y divide-border/20 max-h-[450px] overflow-y-auto pr-1">
+                      {wk.fullList && wk.fullList.length > 0 ? (
+                        wk.fullList.map((f: any, i: number) => (
+                          <div key={f.userId ?? f.name} className="grid grid-cols-[24px_1fr_50px] gap-2 items-center px-3 py-2 hover:bg-bg-elev/40 transition-colors">
+                            <span className={cn(
+                              "flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold",
+                              i === 0 ? "bg-amber-500/20 text-amber-400" :
+                              i < 3 ? "bg-bg-elev border border-border text-fg" : "text-fg-muted"
+                            )}>{i + 1}</span>
+                            {getFacultyLink(f.userId) ? (
+                              <Link href={getFacultyLink(f.userId)!} className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity">
+                                <span
+                                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
+                                  style={{ background: avatarColor(f.name) }}
+                                >
+                                  {f.name.charAt(0).toUpperCase()}
+                                </span>
+                                <span className="text-[11px] font-medium text-violet-400 hover:underline truncate">
+                                  {f.name}
+                                </span>
+                              </Link>
+                            ) : (
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
+                                  style={{ background: avatarColor(f.name) }}
+                                >
+                                  {f.name.charAt(0).toUpperCase()}
+                                </span>
+                                <span className="text-[11px] font-medium text-fg truncate">{f.name}</span>
+                              </div>
+                            )}
+                            <span className="text-[12px] font-bold text-emerald-400 text-right tabular-nums">{f.score?.toFixed(1) ?? "—"}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-3 py-6 text-center text-[11px] text-fg-dim">No data yet</div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         )}
       </motion.div>
