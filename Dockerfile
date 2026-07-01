@@ -44,5 +44,9 @@ USER nextjs
 # Expose Next.js unified port
 EXPOSE 3000
 
+# Docker healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
 # Start production server
 CMD ["npm", "start"]
