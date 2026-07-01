@@ -1,47 +1,48 @@
-# --- Base Stage ---
-FROM node:20-alpine AS base
+# Stage 1: Build image
+FROM node:20-alpine AS builder
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
-COPY package.json package-lock.json ./
 
-# --- Dependencies Stage ---
-FROM base AS deps
-RUN npm ci --legacy-peer-deps
+# Install dependencies first (leverage layer caching)
+COPY package*.json ./
+RUN npm ci
 
-# --- Build Stage ---
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
+# Copy the rest of the application code
 COPY . .
 
-# Set production environment for the build phase
-ENV NODE_ENV=production
-# Disable Next.js telemetry
+# Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 
+# Run production build
 RUN npm run build
 
-# --- Runner Stage ---
+# Stage 2: Production runner
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Create a system user and group for running the container securely (least privilege)
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy standalone build assets
+# Copy public assets and built app files
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
+# Adjust permissions
+RUN chown -R nextjs:nodejs /app
+
+# Switch to the non-root user
 USER nextjs
 
+# Expose Next.js unified port
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
-
-CMD ["node", "server.js"]
+# Start production server
+CMD ["npm", "start"]
