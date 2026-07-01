@@ -110,7 +110,9 @@ export default function ScoreboardPage() {
           const d = v.uploadedAt ? new Date(v.uploadedAt) : null;
           return d && d >= s && d <= e;
         });
-        return vs.length ? vs.reduce((acc: number, v: any) => acc + (v.managerScore ?? 0), 0) : null;
+        const scores = vs.map((v: any) => v.managerScore).filter((v): v is number => v != null);
+        scores.sort((a, b) => b - a);
+        return scores.length ? scores.slice(0, 3).reduce((acc: number, v: any) => acc + v, 0) : null;
       };
 
       const wk1 = weekScore(JUNE_WEEKS[0].start, JUNE_WEEKS[0].end);
@@ -125,14 +127,26 @@ export default function ScoreboardPage() {
       if (!filterRange) {
         filteredScore = total;
       } else {
-        const matching = own.filter((v: any) => {
-          const d = v.uploadedAt ? new Date(v.uploadedAt) : null;
-          if (!d) return false;
-          if (filterRange.start && d < filterRange.start) return false;
-          if (filterRange.end && d > filterRange.end) return false;
-          return true;
-        });
-        filteredScore = matching.length > 0 ? matching.reduce((sum: number, v: any) => sum + (v.managerScore ?? 0), 0) : null;
+        let sum = 0;
+        let hasScoredWeek = false;
+        for (const wk of JUNE_WEEKS) {
+          const wkMatchingVids = own.filter((v: any) => {
+            const d = v.uploadedAt ? new Date(v.uploadedAt) : null;
+            if (!d) return false;
+            if (d < wk.start || d > wk.end) return false;
+            if (filterRange.start && d < filterRange.start) return false;
+            if (filterRange.end && d > filterRange.end) return false;
+            return true;
+          });
+
+          if (wkMatchingVids.length > 0) {
+            hasScoredWeek = true;
+            const wkScores = wkMatchingVids.map((v: any) => v.managerScore).filter((s): s is number => s != null);
+            wkScores.sort((a, b) => b - a);
+            sum += wkScores.slice(0, 3).reduce((acc, s) => acc + s, 0);
+          }
+        }
+        filteredScore = hasScoredWeek ? sum : null;
       }
 
       return {

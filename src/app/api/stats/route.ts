@@ -15,6 +15,40 @@ import { extractYouTubeId } from "@/lib/utils";
 
 const getApiKey = () => process.env.YOUTUBE_API_KEY ?? "";
 
+function computeJuneCohortNetScore(videos: Video[], ratings: ManagerRating[]): number {
+  const ratingMap = new Map<string, number>();
+  for (const r of ratings) {
+    if (r.managerId === "shared" || !ratingMap.has(r.videoId)) {
+      ratingMap.set(r.videoId, r.total);
+    }
+  }
+
+  const JUNE_WEEKS = [
+    { start: new Date("2026-06-08T00:00:00Z"), end: new Date("2026-06-14T23:59:59Z") },
+    { start: new Date("2026-06-15T00:00:00Z"), end: new Date("2026-06-21T23:59:59Z") },
+    { start: new Date("2026-06-22T00:00:00Z"), end: new Date("2026-06-28T23:59:59Z") },
+    { start: new Date("2026-06-29T00:00:00Z"), end: new Date("2026-07-05T23:59:59Z") },
+  ];
+
+  let totalScore = 0;
+  for (const wk of JUNE_WEEKS) {
+    const wkVids = videos.filter(v => {
+      if (!v.uploadedAt) return false;
+      const d = new Date(v.uploadedAt);
+      return d >= wk.start && d <= wk.end;
+    });
+
+    const wkScores = wkVids
+      .map(v => ratingMap.get(v.videoId))
+      .filter((s): s is number => s !== undefined && s !== null);
+
+    wkScores.sort((a, b) => b - a);
+    const top3Sum = wkScores.slice(0, 3).reduce((sum, s) => sum + s, 0);
+    totalScore += top3Sum;
+  }
+  return Number(totalScore.toFixed(2));
+}
+
 function parseYTDuration(dur: string): string {
   if (!dur) return "";
   const match = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -530,14 +564,26 @@ export async function GET(req: Request) {
     ratingMap.get(r.videoId)!.push(r);
   }
   const ratedCount = filteredVideos.filter((v) => v.status === "manager_rated").length;
-  const managerScores = filteredVideos
-    .map((v) => {
+  let netScore = 0;
+  if (facultyUser?.cohort === "June EduSkill") {
+    const simpleRatings: ManagerRating[] = [];
+    for (const v of filteredVideos) {
       const vRatings = ratingMap.get(v.videoId) || [];
       const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
-      return r ? r.total : null;
-    })
-    .filter((s): s is number => s !== null);
-  const sumManager = managerScores.reduce((a, b) => a + b, 0);
+      if (r) simpleRatings.push(r);
+    }
+    netScore = computeJuneCohortNetScore(filteredVideos, simpleRatings);
+  } else {
+    const managerScores = filteredVideos
+      .map((v) => {
+        const vRatings = ratingMap.get(v.videoId) || [];
+        const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
+        return r ? r.total : null;
+      })
+      .filter((s): s is number => s !== null);
+    const sumManager = managerScores.reduce((a, b) => a + b, 0);
+    netScore = Number(sumManager.toFixed(2));
+  }
 
   const bySubject: Record<
     string,
@@ -563,7 +609,7 @@ export async function GET(req: Request) {
     subjects: facultyUser?.subjects || [],
     avatarUrl: facultyUser?.avatarUrl,
     totalVideos: filteredVideos.length,
-    netScore: Number(sumManager.toFixed(2)),
+    netScore,
     pctRatedByManager:
       filteredVideos.length > 0
         ? Math.round((ratedCount / filteredVideos.length) * 100)
@@ -782,15 +828,17 @@ async function aggregateAll(
   } else {
     leaderboard = users.map((u) => {
       const own = filteredVideos.filter((v) => v.facultyId === u.userId);
-      const managerScoresForUser = own
-        .map((v) => {
-          const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
-          const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
-          return r ? r.total : null;
-        })
-        .filter((s): s is number => s !== null);
+      const userRatings: ManagerRating[] = [];
+      for (const v of own) {
+        const vRatings = ratings.filter((rt) => rt.videoId === v.videoId);
+        const r = vRatings.find((rt) => rt.managerId === "shared") || vRatings[0];
+        if (r) userRatings.push(r);
+      }
 
-      const sumCombined = managerScoresForUser.reduce((a, b) => a + b, 0);
+      const netScore = cohort === "June EduSkill"
+        ? computeJuneCohortNetScore(own, userRatings)
+        : Number(userRatings.reduce((sum, r) => sum + r.total, 0).toFixed(2));
+
       const yt = ytMap.get(u.userId);
 
       return {
@@ -799,7 +847,7 @@ async function aggregateAll(
         email: u.email,
         subjects: u.subjects,
         videoCount: own.length,
-        netScore: Number(sumCombined.toFixed(2)),
+        netScore,
         totalViews: week === "all" ? (yt?.totalViews ?? 0) : own.reduce((sum, v) => sum + (v.views ?? 0), 0),
         totalLikes: week === "all" ? (yt?.totalLikes ?? 0) : own.reduce((sum, v) => sum + (v.likes ?? 0), 0),
         subscribers: yt?.subscribers ?? 0,

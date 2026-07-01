@@ -113,7 +113,9 @@ export default function LeaderboardPage() {
           v.managerScore !== null && v.managerScore !== undefined &&
           v.uploadedAt && new Date(v.uploadedAt) >= wk.start && new Date(v.uploadedAt) <= wk.end
         );
-        const score = own.length > 0 ? own.reduce((s: number, v: any) => s + (v.managerScore ?? 0), 0) : null;
+        const scores = own.map((v: any) => v.managerScore).filter((s): s is number => s !== null);
+        scores.sort((a, b) => b - a);
+        const score = scores.length > 0 ? scores.slice(0, 3).reduce((sum, s) => sum + s, 0) : null;
         return { userId: f.userId, name: f.name, score };
       }).filter(x => x.score !== null) as { userId: string; name: string; score: number }[];
 
