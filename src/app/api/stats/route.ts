@@ -654,18 +654,10 @@ async function aggregateAll(
   const users = (usersRes.Items ?? []) as User[];
   const facultyIds = users.map((u) => u.userId);
 
-  // 2. Fetch videos only for these faculty using parallel QueryCommands (partition key query)
-  const videoPromises = facultyIds.map((fId) =>
-    ddb.send(
-      new QueryCommand({
-        TableName: TABLES.VIDEOS,
-        KeyConditionExpression: "facultyId = :f",
-        ExpressionAttributeValues: { ":f": fId },
-      })
-    )
-  );
-  const videoResults = await Promise.all(videoPromises);
-  const videos = videoResults.flatMap((r) => r.Items ?? []) as Video[];
+  // 2. Fetch all videos using a single ScanCommand (optimized to avoid N+1 queries)
+  const videosRes = await ddb.send(new ScanCommand({ TableName: TABLES.VIDEOS }));
+  const allVideos = (videosRes.Items ?? []) as Video[];
+  const videos = allVideos.filter((v) => facultyIds.includes(v.facultyId));
 
   let filteredVideos = videos;
   if (week === "current" || week === "previous") {
@@ -679,24 +671,12 @@ async function aggregateAll(
 
   const videoIds = filteredVideos.map((v) => v.videoId);
 
-  // 3. Query ratings for each video individually
+  // 3. Fetch all ratings using a single ScanCommand (optimized to avoid N+1 queries)
   const ratings: ManagerRating[] = [];
   if (videoIds.length > 0) {
-    const ratingPromises = videoIds.map((vId) =>
-      ddb.send(
-        new QueryCommand({
-          TableName: TABLES.RATINGS,
-          KeyConditionExpression: "videoId = :v",
-          ExpressionAttributeValues: { ":v": vId },
-        })
-      )
-    );
-    const ratingResults = await Promise.all(ratingPromises);
-    ratingResults.forEach((r) => {
-      if (r.Items) {
-        ratings.push(...(r.Items as ManagerRating[]));
-      }
-    });
+    const ratingsRes = await ddb.send(new ScanCommand({ TableName: TABLES.RATINGS }));
+    const allRatings = (ratingsRes.Items ?? []) as ManagerRating[];
+    ratings.push(...allRatings.filter((r) => videoIds.includes(r.videoId)));
   }
 
   // 4. BatchGet YT stats for the cohort's faculty
